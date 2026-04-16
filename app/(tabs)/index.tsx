@@ -1,19 +1,28 @@
 // app/(tabs)/index.tsx
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native'; // ← Ajouter Image ici
+import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import LogoImage from '@/assets/images/logo_home_150x150.png';
-import {Footer} from "@/components/Footer";
+import { Footer } from "@/components/Footer";
+import { useTranslation } from "react-i18next";
 
 const Index = () => {
     const { colors, isDark, isLoading } = useTheme();
+    const { t } = useTranslation();
+
+    // Définir les features à l'intérieur du composant pour avoir accès à t()
+    const features = [
+        { icon: '💰', title: t('home.budget_management'), description: t('home.budget_management_desc') },
+        { icon: '📊', title: t('home.dashboard'), description: t('home.dashboard_desc') },
+        { icon: '🌓', title: t('home.theme'), description: t('home.theme_desc') },
+    ];
 
     if (isLoading || !colors) {
         return (
             <SafeAreaView className="flex-1 items-center justify-center bg-white dark:bg-gray-900">
-                <Text>Chargement...</Text>
+                <Text>{t("common.loading")}</Text>
             </SafeAreaView>
         );
     }
@@ -33,16 +42,16 @@ const Index = () => {
                     />
 
                     <Text className="text-3xl font-bold text-center mb-2" style={{ color: colors.text }}>
-                        BudgetFlow
+                        {t('home.title')}
                     </Text>
                     <Text className="text-base text-center px-6" style={{ color: colors.textSecondary }}>
-                        Gérez votre budget simplement et efficacement
+                        {t('home.subtitle')}
                     </Text>
                 </LinearGradient>
 
                 <View className="px-4 pt-6 pb-4">
                     <Text className="text-xl font-semibold mb-4 px-2" style={{ color: colors.text }}>
-                        Fonctionnalités principales
+                        {t('home.features')}
                     </Text>
 
                     <View className="space-y-3">
@@ -70,16 +79,10 @@ const Index = () => {
                 </View>
 
                 {/* Section Pied de page - Crédits */}
-                <Footer/>
+                <Footer />
             </ScrollView>
         </SafeAreaView>
     );
 };
-
-const features = [
-    { icon: '💰', title: 'Gestion des budgets', description: 'Créez et gérez vos budgets personnalisés' },
-    { icon: '📊', title: 'Tableau de bord', description: 'Visualisez vos dépenses en temps réel' },
-    { icon: '🌓', title: 'Thème clair/sombre', description: 'Adaptez l\'app à votre préférence' },
-];
 
 export default Index;

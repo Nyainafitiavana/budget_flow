@@ -8,8 +8,11 @@ import { storageService } from '@/hooks/use-storage';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { CustomModal } from '@/components/custom-modal';
 import {Footer} from "@/components/Footer";
+import i18, {changeLanguage} from "@/i18";
+import {useTranslation} from "react-i18next";
 
 const Settings = () => {
+    const { t } = useTranslation();
     const { colors, isDark, toggleTheme } = useTheme();
     const { refreshData, isLoading: dataLoading } = useBudgetData();
     const { currency, setCurrencyCode, getCurrenciesList, isLoading: currencyLoading } = useCurrency();
@@ -27,48 +30,21 @@ const Settings = () => {
 
     const handleResetAllData = () => {
         Alert.alert(
-            'Réinitialiser toutes les données',
-            'Cette action va supprimer tous vos comptes, budgets et transactions.',
+            t('settings.reset_all'),
+            t('alerts.reset_all_confirm'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Réinitialiser',
+                    text: t('settings.rest_all'),
                     style: 'destructive',
                     onPress: async () => {
                         setIsResetting(true);
                         try {
                             await storageService.clearAll();
                             await refreshData();
-                            showNotification('Succès', 'Toutes les données ont été réinitialisées', 'success');
+                            showNotification(t('common.success'), t('alerts.rest_success'), 'success');
                         } catch (err) {
-                            showNotification('Erreur', 'Impossible de réinitialiser les données', 'error');
-                        } finally {
-                            setIsResetting(false);
-                        }
-                    },
-                },
-            ]
-        );
-    };
-
-    const handleResetAccountsOnly = () => {
-        Alert.alert(
-            'Supprimer les comptes',
-            'Cette action va supprimer tous vos comptes.',
-            [
-                { text: 'Annuler', style: 'cancel' },
-                {
-                    text: 'Supprimer',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setIsResetting(true);
-                        try {
-                            await storageService.removeItem('accounts');
-                            await refreshData();
-                            showNotification('Succès', 'Comptes supprimés', 'success');
-                        } catch (err) {
-                            console.log(err);
-                            showNotification('Erreur', 'Impossible de supprimer les comptes', 'error');
+                            showNotification(t('common.error'), 'Unable to reset data', 'error');
                         } finally {
                             setIsResetting(false);
                         }
@@ -80,21 +56,21 @@ const Settings = () => {
 
     const handleResetBudgetsOnly = () => {
         Alert.alert(
-            'Supprimer les budgets',
-            'Cette action va supprimer tous vos budgets.',
+            t('settings.delete_budgets'),
+            t('alerts.delete_budgets_confirm'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         setIsResetting(true);
                         try {
                             await storageService.removeItem('budgets');
                             await refreshData();
-                            showNotification('Succès', 'Budgets supprimés', 'success');
+                            showNotification(t('common.success'), t('alerts.delete_budgets_success'), 'success');
                         } catch (err) {
-                            showNotification('Erreur', 'Impossible de supprimer les budgets', 'error');
+                            showNotification(t('common.error'), 'Unable to delete budgets', 'error');
                         } finally {
                             setIsResetting(false);
                         }
@@ -106,21 +82,21 @@ const Settings = () => {
 
     const handleResetTransactionsOnly = () => {
         Alert.alert(
-            'Supprimer les transactions',
-            'Cette action va supprimer tout l\'historique des transactions.',
+            t('settings.delete_transactions'),
+            t('alerts.delete_transactions_confirm'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         setIsResetting(true);
                         try {
                             await storageService.removeItem('transactions');
                             await refreshData();
-                            showNotification('Succès', 'Transactions supprimées', 'success');
+                            showNotification(t('common.success'), t('alerts.delete_transactions_success'), 'success');
                         } catch (err) {
-                            showNotification('Erreur', 'Impossible de supprimer les transactions', 'error');
+                            showNotification(t('common.error'), 'Unable to reset data', 'error');
                         } finally {
                             setIsResetting(false);
                         }
@@ -143,12 +119,12 @@ const Settings = () => {
             <View className="px-6 pt-6 pb-8">
                 {/* Section Apparence */}
                 <View className="mb-8">
-                    <Text className="text-lg font-semibold mb-4" style={{ color: colors.text }}>Apparence</Text>
+                    <Text className="text-lg font-semibold mb-4" style={{ color: colors.text }}>{ t('settings.appearance') }</Text>
                     <View className="rounded-xl overflow-hidden" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
                         <View className="flex-row items-center justify-between p-4">
                             <View>
-                                <Text className="font-medium" style={{ color: colors.text }}>Mode sombre</Text>
-                                <Text className="text-sm" style={{ color: colors.textSecondary }}>Activer le thème sombre</Text>
+                                <Text className="font-medium" style={{ color: colors.text }}>{ t('settings.dark_mode') }</Text>
+                                <Text className="text-sm" style={{ color: colors.textSecondary }}>{ t('settings.dark_mode_desc') }</Text>
                             </View>
                             <Switch
                                 value={isDark}
@@ -160,9 +136,39 @@ const Settings = () => {
                     </View>
                 </View>
 
+                {/* Section Langue */}
+                <View className="mb-8">
+                    <Text className="text-lg font-semibold mb-4" style={{ color: colors.text }}>
+                        {t('settings.language')}
+                    </Text>
+                    <View className="rounded-xl overflow-hidden" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+                        <TouchableOpacity
+                            onPress={() => changeLanguage('fr')}
+                            className="flex-row items-center justify-between p-4"
+                        >
+                            <View>
+                                <Text className="font-medium" style={{ color: colors.text }}>Français</Text>
+                                <Text className="text-sm" style={{ color: colors.textSecondary }}>Français</Text>
+                            </View>
+                            {i18.language === 'fr' && <MaterialIcons name="check-circle" size={24} color={colors.primary} />}
+                        </TouchableOpacity>
+                        <View className="h-px" style={{ backgroundColor: colors.border }} />
+                        <TouchableOpacity
+                            onPress={() => changeLanguage('en')}
+                            className="flex-row items-center justify-between p-4"
+                        >
+                            <View>
+                                <Text className="font-medium" style={{ color: colors.text }}>English</Text>
+                                <Text className="text-sm" style={{ color: colors.textSecondary }}>English</Text>
+                            </View>
+                            {i18.language === 'en' && <MaterialIcons name="check-circle" size={24} color={colors.primary} />}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
                 {/* Section Devise */}
                 <View className="mb-8">
-                    <Text className="text-lg font-semibold mb-4" style={{ color: colors.text }}>Devise</Text>
+                    <Text className="text-lg font-semibold mb-4" style={{ color: colors.text }}>{ t('settings.currency') }</Text>
                     <View className="rounded-xl overflow-hidden" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
                         {getCurrenciesList().map((curr, index) => (
                             <React.Fragment key={curr.code}>
@@ -181,26 +187,21 @@ const Settings = () => {
 
                 {/* Section Données */}
                 <View className="mb-8">
-                    <Text className="text-lg font-semibold mb-4" style={{ color: colors.text }}>Données</Text>
+                    <Text className="text-lg font-semibold mb-4" style={{ color: colors.text }}>{ t('settings.data') }</Text>
                     <View className="rounded-xl overflow-hidden" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
                         <TouchableOpacity onPress={handleResetTransactionsOnly} className="p-4">
-                            <Text className="font-medium" style={{ color: colors.warning || '#F59E0B' }}>Supprimer les transactions</Text>
-                            <Text className="text-sm" style={{ color: colors.textSecondary }}>Supprimer uniquement l&#39;historique</Text>
+                            <Text className="font-medium" style={{ color: colors.warning || '#F59E0B' }}>{ t('settings.delete_transactions') }</Text>
+                            <Text className="text-sm" style={{ color: colors.textSecondary }}>{ t('settings.delete_transactions_desc') }</Text>
                         </TouchableOpacity>
                         <View className="h-px" style={{ backgroundColor: colors.border }} />
                         <TouchableOpacity onPress={handleResetBudgetsOnly} className="p-4">
-                            <Text className="font-medium" style={{ color: colors.warning || '#F59E0B' }}>Supprimer les budgets</Text>
-                            <Text className="text-sm" style={{ color: colors.textSecondary }}>Supprimer uniquement les budgets</Text>
-                        </TouchableOpacity>
-                        <View className="h-px" style={{ backgroundColor: colors.border }} />
-                        <TouchableOpacity onPress={handleResetAccountsOnly} className="p-4">
-                            <Text className="font-medium" style={{ color: colors.warning || '#F59E0B' }}>Supprimer les comptes</Text>
-                            <Text className="text-sm" style={{ color: colors.textSecondary }}>Supprimer uniquement les comptes</Text>
+                            <Text className="font-medium" style={{ color: colors.warning || '#F59E0B' }}>{ t('settings.delete_budgets') }</Text>
+                            <Text className="text-sm" style={{ color: colors.textSecondary }}>{ t('settings.delete_budgets_desc') }</Text>
                         </TouchableOpacity>
                         <View className="h-px" style={{ backgroundColor: colors.border }} />
                         <TouchableOpacity onPress={handleResetAllData} className="p-4">
-                            <Text className="font-medium" style={{ color: colors.error }}>🗑️ Réinitialiser toutes les données</Text>
-                            <Text className="text-sm" style={{ color: colors.textSecondary }}>Supprimer tout</Text>
+                            <Text className="font-medium" style={{ color: colors.error }}>{ t('settings.reset_all') }</Text>
+                            <Text className="text-sm" style={{ color: colors.textSecondary }}>{ t('settings.reset_all_desc') }</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

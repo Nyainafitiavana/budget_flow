@@ -1,5 +1,7 @@
+// app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/hooks/use-theme';
 import { HapticTab } from '@/components/haptic-tab';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -7,6 +9,7 @@ import { View, ActivityIndicator } from 'react-native';
 
 export default function TabLayout() {
     const { isDark, isLoading } = useTheme();
+    const { t } = useTranslation();
 
     if (isLoading) {
         return (
@@ -40,7 +43,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="index"
                 options={{
-                    title: 'Accueil',
+                    title: t('tabs.home'),
                     tabBarIcon: ({ color, focused }) => (
                         <MaterialIcons size={24} name={focused ? "home" : "home"} color={color} />
                     ),
@@ -49,7 +52,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="dashboard"
                 options={{
-                    title: 'Dashboard',
+                    title: t('tabs.dashboard'),
                     tabBarIcon: ({ color, focused }) => (
                         <MaterialIcons size={24} name={focused ? "bar-chart" : "bar-chart"} color={color} />
                     ),
@@ -58,7 +61,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="budgets"
                 options={{
-                    title: 'Budgets',
+                    title: t('tabs.budgets'),
                     tabBarIcon: ({ color, focused }) => (
                         <MaterialIcons size={24} name={focused ? "account-balance-wallet" : "account-balance-wallet"} color={color} />
                     ),
@@ -67,7 +70,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="accounts"
                 options={{
-                    title: 'Comptes',
+                    title: t('tabs.accounts'),
                     tabBarIcon: ({ color, focused }) => (
                         <MaterialIcons size={24} name={focused ? "account-balance" : "account-balance"} color={color} />
                     ),
@@ -76,7 +79,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="settings"
                 options={{
-                    title: 'Paramètres',
+                    title: t('tabs.settings'),
                     tabBarIcon: ({ color, focused }) => (
                         <MaterialIcons size={24} name={focused ? "settings" : "settings"} color={color} />
                     ),

@@ -8,9 +8,11 @@ import { useAppDispatch } from '@/store/hooks';
 import { updateAccountBalance, updateBudgetSpent, addTransaction, addBudget, deleteBudget } from '@/store/slices/data.slice';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import {useTranslation} from "react-i18next";
 
 const Budgets = () => {
     const { colors } = useTheme();
+    const { t } = useTranslation();
     const { budgets, accounts, transactions, refreshData, isLoading } = useBudgetData();
     const { formatAmount } = useCurrency();
     const dispatch = useAppDispatch();
@@ -81,17 +83,20 @@ const Budgets = () => {
     const handleAddBudget = async () => {
         const numAmount = parseFloat(budgetAmount);
         if (!budgetName.trim()) {
-            Alert.alert('Erreur', 'Nom du budget requis');
+            Alert.alert(t('alerts.error'), t('alerts.budget_name_required'));
             return;
         }
         if (isNaN(numAmount) || numAmount <= 0) {
-            Alert.alert('Erreur', 'Montant invalide');
+            Alert.alert(t('alerts.error'), t('alerts.invalid_amount'));
             return;
         }
 
         // Vérifier le solde espèces avant
         if (!cashAccount || cashAccount.balance < numAmount) {
-            Alert.alert('Erreur', `Solde espèces insuffisant. Disponible: ${formatAmount(cashAccount?.balance || 0)}`);
+            Alert.alert(
+                t('alerts.error'),
+                t('alerts.insufficient_cash', {amount: formatAmount(cashAccount?.balance || 0) })
+            );
             return;
         }
 
@@ -110,9 +115,11 @@ const Budgets = () => {
             resetModal();
             setBudgetName('');
             setBudgetAmount('');
-            Alert.alert('Succès', `Budget "${budgetName}" créé avec ${formatAmount(numAmount)}`);
+            Alert.alert(
+                t('alerts.budget_created', { name: budgetName, amount: formatAmount(numAmount) })
+            );
         } catch (error: any) {
-            Alert.alert('Erreur', error.message);
+            Alert.alert(t('alerts.error'), error.message);
         } finally {
             setLoading(false);
         }
@@ -121,34 +128,32 @@ const Budgets = () => {
     // CORRECTION PRINCIPALE ICI
     const handleAlimenterBudget = async () => {
         if (!selectedBudget) {
-            Alert.alert('Erreur', 'Budget non sélectionné');
+            Alert.alert(t('alerts.error'), 'Budget non sélectionné');
             return;
         }
 
         const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
-            Alert.alert('Erreur', 'Montant invalide');
+            Alert.alert(t('alerts.error'), t('alerts.invalid_amount'));
             return;
         }
 
         if (!cashAccount || cashAccount.balance < numAmount) {
-            Alert.alert('Erreur', `Solde espèces insuffisant. Disponible: ${formatAmount(cashAccount?.balance || 0)}`);
+            Alert.alert(
+                t('alerts.error'),
+                t('alerts.insufficient_cash', {amount: formatAmount(cashAccount?.balance || 0)})
+            );
             return;
         }
 
         setLoading(true);
         try {
-            console.log(' Début alimentation budget');
-            console.log(' Espèces avant:', cashAccount.balance);
-            console.log(' Budget avant spent:', selectedBudget.spent);
-
             // 1. Diminuer les espèces
             const newCashBalance = cashAccount.balance - numAmount;
             await dispatch(updateAccountBalance({
                 accountId: cashAccount.id,
                 newBalance: newCashBalance
             })).unwrap();
-            console.log(' Espèces après mise à jour:', newCashBalance);
 
             // 2. Modifier le budget (spent devient plus négatif pour augmenter le budget)
             const currentSpent = selectedBudget.spent;
@@ -157,7 +162,6 @@ const Budgets = () => {
                 budgetId: selectedBudget.id,
                 amount: newSpent - currentSpent
             })).unwrap();
-            console.log(' Budget spent après:', newSpent);
 
             // 3. Ajouter la transaction
             await dispatch(addTransaction({
@@ -167,20 +171,18 @@ const Budgets = () => {
                 destination: 'budget',
                 budgetId: selectedBudget.id,
                 amount: numAmount,
-                description: description || `Alimentation du budget ${selectedBudget.name}`,
+                description: description || t('transaction.top_up', {field: 'budget', name: selectedBudget.name}),
                 date: new Date(),
             })).unwrap();
-            console.log(' Transaction ajoutée');
 
             // 4. Recharger les données
             await refreshData();
-            console.log(' Données rechargées');
 
             resetModal();
-            Alert.alert('Succès', `${formatAmount(numAmount)} ajouté au budget "${selectedBudget.name}"`);
+            Alert.alert(t('common.success'), t('alerts.budget_topped_up', {amount: formatAmount(numAmount), name: selectedBudget.name}));
         } catch (error: any) {
             console.error(' Erreur:', error);
-            Alert.alert('Erreur', error.message);
+            Alert.alert(t('alerts.error'), error.message);
         } finally {
             setLoading(false);
         }
@@ -188,17 +190,17 @@ const Budgets = () => {
 
     const handleDepense = async () => {
         if (!selectedBudget) {
-            Alert.alert('Erreur', 'Budget non sélectionné');
+            Alert.alert(t('alerts.error'), 'Budget non sélectionné');
             return;
         }
         const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
-            Alert.alert('Erreur', 'Montant invalide');
+            Alert.alert(t('alerts.error'), t('alerts.invalid_amount'));
             return;
         }
         const { solde } = getBudgetTotals(selectedBudget);
         if (solde < numAmount) {
-            Alert.alert('Erreur', `Solde budget insuffisant. Restant: ${formatAmount(solde)}`);
+            Alert.alert(t('alerts.error'), t('alerts.insufficient_budget', {amount: formatAmount(solde)}))
             return;
         }
 
@@ -218,15 +220,15 @@ const Budgets = () => {
                 destination: '',
                 budgetId: selectedBudget.id,
                 amount: numAmount,
-                description: description.trim() || `Dépense depuis ${selectedBudget.name}`,
+                description: description.trim() || t('budgets.spent_from', {name: selectedBudget.name}),
                 date: new Date(),
             })).unwrap();
 
             await refreshData();
             resetModal();
-            Alert.alert('Succès', `${formatAmount(numAmount)} dépensé depuis "${selectedBudget.name}"`);
+            Alert.alert(t('common.success'), `${formatAmount(numAmount)}` + t('budgets.spent_from', {name: selectedBudget.name}));
         } catch (error: any) {
-            Alert.alert('Erreur', error.message);
+            Alert.alert(t('alerts.error'), error.message);
         } finally {
             setLoading(false);
         }
@@ -234,17 +236,17 @@ const Budgets = () => {
 
     const handleTransferToSavings = async () => {
         if (!selectedBudget) {
-            Alert.alert('Erreur', 'Budget non sélectionné');
+            Alert.alert(t('alerts.error'), 'Budget non sélectionné');
             return;
         }
         const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
-            Alert.alert('Erreur', 'Montant invalide');
+            Alert.alert(t('alerts.error'), t('alerts.invalid_amount'));
             return;
         }
         const { solde } = getBudgetTotals(selectedBudget);
         if (solde < numAmount) {
-            Alert.alert('Erreur', `Solde budget insuffisant. Restant: ${formatAmount(solde)}`);
+            Alert.alert(t('alerts.error'), t('alerts.insufficient_budget', {amount: formatAmount(solde)}));
             return;
         }
 
@@ -271,15 +273,15 @@ const Budgets = () => {
                 destination: 'savings',
                 budgetId: selectedBudget.id,
                 amount: numAmount,
-                description: description || `Transfert vers épargne depuis ${selectedBudget.name}`,
+                description: description || t('budgets.transfer_to_savings_from', {name: selectedBudget.name}),
                 date: new Date(),
             })).unwrap();
 
             await refreshData();
             resetModal();
-            Alert.alert('Succès', `${formatAmount(numAmount)} transféré vers l'épargne`);
+            Alert.alert(t('common.success'), t('alerts.budget_transferred', {amount: formatAmount(numAmount)}));
         } catch (error: any) {
-            Alert.alert('Erreur', error.message);
+            Alert.alert(t('alerts.error'), error.message);
         } finally {
             setLoading(false);
         }
@@ -293,16 +295,16 @@ const Budgets = () => {
         }
 
         const message = soldeRestant > 0
-            ? `Voulez-vous vraiment supprimer le budget "${budget.name}" ?\n\nLe solde restant de ${formatAmount(soldeRestant)} sera remboursé dans vos espèces.`
-            : `Voulez-vous vraiment supprimer le budget "${budget.name}" ?\n\nCe budget n'a pas de solde restant.`;
+            ? t('alerts.delete_budget_confirm', {name: budget.name}) + '\n\n' + t('alerts.delete_budget_with_refund', {amount: formatAmount(soldeRestant)})
+            : t('alerts.delete_budget_confirm', {name: budget.name}) + '\n\n' + t('alerts.delete_budget_no_refund');
 
         Alert.alert(
-            'Supprimer le budget',
+            t('alerts.delete_budget'),
             message,
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text:  t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         setLoading(true);
@@ -310,9 +312,13 @@ const Budgets = () => {
                             // Appeler deleteBudget avec remboursement automatique
                             await dispatch(deleteBudget(budget.id)).unwrap();
                             await refreshData();
-                            Alert.alert('Succès', `Budget "${budget.name}" supprimé${soldeRestant > 0 ? `, ${formatAmount(soldeRestant)} a été remboursé dans vos espèces` : ''}`);
+                            const successMessage = soldeRestant > 0
+                                ? `${t('alerts.delete_budget_success', { name: budget.name })} ${t('alerts.delete_budget_refund', { amount: formatAmount(soldeRestant) })}`
+                                : t('alerts.delete_budget_success', { name: budget.name });
+
+                            Alert.alert(t('common.success'), successMessage);
                         } catch (error: any) {
-                            Alert.alert('Erreur', error.message);
+                            Alert.alert(t('alerts.error'), error.message);
                         } finally {
                             setLoading(false);
                         }
@@ -337,7 +343,7 @@ const Budgets = () => {
                 <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background, maxHeight: '80%' }}>
                         <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-xl font-bold" style={{ color: colors.text }}>Historique - {selectedBudget.name}</Text>
+                            <Text className="text-xl font-bold" style={{ color: colors.text }}>{t('budgets.history')} - {selectedBudget.name} </Text>
                             <TouchableOpacity onPress={resetModal}>
                                 <MaterialIcons name="close" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
@@ -345,15 +351,15 @@ const Budgets = () => {
 
                         <View className="flex-row justify-between mb-4 p-3 rounded-xl" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>Total</Text>
+                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('budgets.total')}</Text>
                                 <Text className="text-lg font-bold" style={{ color: colors.primary }}>{formatAmount(totalReel)}</Text>
                             </View>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>Dépensé</Text>
+                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('budgets.spent')}</Text>
                                 <Text className="text-lg font-bold" style={{ color: colors.error }}>{formatAmount(depenses)}</Text>
                             </View>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>Solde</Text>
+                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('budgets.current_balance')}</Text>
                                 <Text className="text-lg font-bold" style={{ color: colors.success }}>{formatAmount(solde)}</Text>
                             </View>
                         </View>
@@ -361,7 +367,7 @@ const Budgets = () => {
                         {budgetTransactions.length === 0 ? (
                             <View className="items-center py-8">
                                 <MaterialIcons name="history" size={50} color={colors.textSecondary} />
-                                <Text className="text-center mt-3" style={{ color: colors.textSecondary }}>Aucune transaction pour ce budget</Text>
+                                <Text className="text-center mt-3" style={{ color: colors.textSecondary }}>{t('budgets.no_transactions')}</Text>
                             </View>
                         ) : (
                             <FlatList
@@ -393,7 +399,7 @@ const Budgets = () => {
                             />
                         )}
                         <TouchableOpacity onPress={resetModal} className="mt-4 p-3 rounded-xl" style={{ backgroundColor: colors.primary }}>
-                            <Text className="text-white text-center font-semibold">Fermer</Text>
+                            <Text className="text-white text-center font-semibold">{t('budgets.close')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -405,10 +411,10 @@ const Budgets = () => {
         <Modal animationType="slide" transparent={true} visible={modalVisible && modalType === 'add'} onRequestClose={resetModal}>
             <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                 <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background }}>
-                    <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>Nouveau budget</Text>
-                    <TextInput placeholder="Nom du budget" placeholderTextColor={colors.textSecondary} value={budgetName} onChangeText={setBudgetName} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
-                    <TextInput placeholder="Montant initial" placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={budgetAmount} onChangeText={setBudgetAmount} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
-                    <Text className="text-sm mb-2" style={{ color: colors.text }}>Couleur:</Text>
+                    <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>{t('budgets.new_budget')}</Text>
+                    <TextInput placeholder={t('budgets.budget_name')} placeholderTextColor={colors.textSecondary} value={budgetName} onChangeText={setBudgetName} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
+                    <TextInput placeholder={t('budgets.initial_amount')} placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={budgetAmount} onChangeText={setBudgetAmount} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
+                    <Text className="text-sm mb-2" style={{ color: colors.text }}>{t('budgets.color')}:</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
                         <View className="flex-row space-x-2">
                             {colorsList.map((color) => (
@@ -419,10 +425,10 @@ const Budgets = () => {
                         </View>
                     </ScrollView>
                     <TouchableOpacity onPress={handleAddBudget} disabled={loading} className="p-3 rounded-xl mb-2" style={{ backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }}>
-                        <Text className="text-white text-center font-semibold">{loading ? 'Création...' : 'Créer le budget'}</Text>
+                        <Text className="text-white text-center font-semibold">{loading ? t('common.loading') : t('budgets.create')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={resetModal} className="p-3 rounded-xl">
-                        <Text className="text-center" style={{ color: colors.textSecondary }}>Annuler</Text>
+                        <Text className="text-center" style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -433,16 +439,16 @@ const Budgets = () => {
         <Modal animationType="slide" transparent={true} visible={modalVisible && modalType === 'alimenter' && selectedBudget !== null} onRequestClose={resetModal}>
             <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                 <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background }}>
-                    <Text className="text-xl font-bold mb-2" style={{ color: colors.text }}>Alimenter le budget</Text>
+                    <Text className="text-xl font-bold mb-2" style={{ color: colors.text }}>{t('budgets.top_up_budget')}</Text>
                     <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>Budget: {selectedBudget?.name}</Text>
-                    <Text className="text-sm mb-4" style={{ color: colors.success }}>Espèces disponibles: {formatAmount(cashAccount?.balance || 0)}</Text>
-                    <TextInput placeholder="Montant à ajouter" placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={amount} onChangeText={setAmount} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border, fontSize: 24, textAlign: 'center' }} />
-                    <TextInput placeholder="Description (optionnelle)" placeholderTextColor={colors.textSecondary} value={description} onChangeText={setDescription} className="p-3 rounded-xl mb-4" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
+                    <Text className="text-sm mb-4" style={{ color: colors.success }}>{t('budgets.available_cash_info')}: {formatAmount(cashAccount?.balance || 0)}</Text>
+                    <TextInput placeholder={t('budgets.amount_to_add')} placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={amount} onChangeText={setAmount} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border, fontSize: 24, textAlign: 'center' }} />
+                    <TextInput placeholder={t('budgets.description_optional')} placeholderTextColor={colors.textSecondary} value={description} onChangeText={setDescription} className="p-3 rounded-xl mb-4" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
                     <TouchableOpacity onPress={handleAlimenterBudget} disabled={loading} className="p-3 rounded-xl mb-2" style={{ backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }}>
-                        <Text className="text-white text-center font-semibold">{loading ? 'Traitement...' : 'Alimenter'}</Text>
+                        <Text className="text-white text-center font-semibold">{loading ? t('common.loading') : t('budgets.top_up')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={resetModal} className="p-3 rounded-xl">
-                        <Text className="text-center" style={{ color: colors.textSecondary }}>Annuler</Text>
+                        <Text className="text-center" style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -453,16 +459,16 @@ const Budgets = () => {
         <Modal animationType="slide" transparent={true} visible={modalVisible && modalType === 'depense' && selectedBudget !== null} onRequestClose={resetModal}>
             <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                 <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background }}>
-                    <Text className="text-xl font-bold mb-2" style={{ color: colors.text }}>Dépenser</Text>
+                    <Text className="text-xl font-bold mb-2" style={{ color: colors.text }}>{t('budgets.spend')}</Text>
                     <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>Budget: {selectedBudget?.name}</Text>
-                    <Text className="text-sm mb-4" style={{ color: colors.warning }}>Solde actuel: {formatAmount(getBudgetTotals(selectedBudget).solde)}</Text>
-                    <TextInput placeholder="Montant de la dépense" placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={amount} onChangeText={setAmount} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border, fontSize: 24, textAlign: 'center' }} />
-                    <TextInput placeholder="Description (optionnelle)" placeholderTextColor={colors.textSecondary} value={description} onChangeText={setDescription} className="p-3 rounded-xl mb-4" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
+                    <Text className="text-sm mb-4" style={{ color: colors.warning }}>{t('budgets.current_balance_info')}: {formatAmount(getBudgetTotals(selectedBudget).solde)}</Text>
+                    <TextInput placeholder={t('budgets.expense_amount')} placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={amount} onChangeText={setAmount} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border, fontSize: 24, textAlign: 'center' }} />
+                    <TextInput placeholder={t('budgets.description_optional')} placeholderTextColor={colors.textSecondary} value={description} onChangeText={setDescription} className="p-3 rounded-xl mb-4" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
                     <TouchableOpacity onPress={handleDepense} disabled={loading} className="p-3 rounded-xl mb-2" style={{ backgroundColor: colors.error, opacity: loading ? 0.7 : 1 }}>
-                        <Text className="text-white text-center font-semibold">{loading ? 'Traitement...' : 'Dépenser'}</Text>
+                        <Text className="text-white text-center font-semibold">{loading ? t('common.loading') : t('budgets.spend')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={resetModal} className="p-3 rounded-xl">
-                        <Text className="text-center" style={{ color: colors.textSecondary }}>Annuler</Text>
+                        <Text className="text-center" style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -473,16 +479,16 @@ const Budgets = () => {
         <Modal animationType="slide" transparent={true} visible={modalVisible && modalType === 'transferToSavings' && selectedBudget !== null} onRequestClose={resetModal}>
             <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                 <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background }}>
-                    <Text className="text-xl font-bold mb-2" style={{ color: colors.text }}>Transférer vers l&#39;épargne</Text>
+                    <Text className="text-xl font-bold mb-2" style={{ color: colors.text }}>{t('budgets.transfer_to_savings')}</Text>
                     <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>Budget: {selectedBudget?.name}</Text>
-                    <Text className="text-sm mb-4" style={{ color: colors.success }}>Solde actuel: {formatAmount(getBudgetTotals(selectedBudget).solde)}</Text>
-                    <TextInput placeholder="Montant à transférer" placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={amount} onChangeText={setAmount} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border, fontSize: 24, textAlign: 'center' }} />
-                    <TextInput placeholder="Description (optionnelle)" placeholderTextColor={colors.textSecondary} value={description} onChangeText={setDescription} className="p-3 rounded-xl mb-4" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
+                    <Text className="text-sm mb-4" style={{ color: colors.success }}>{t('budgets.current_balance_info')}: {formatAmount(getBudgetTotals(selectedBudget).solde)}</Text>
+                    <TextInput placeholder={t('budgets.amount_to_transfer')} placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={amount} onChangeText={setAmount} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border, fontSize: 24, textAlign: 'center' }} />
+                    <TextInput placeholder={t('budgets.description_optional')} placeholderTextColor={colors.textSecondary} value={description} onChangeText={setDescription} className="p-3 rounded-xl mb-4" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
                     <TouchableOpacity onPress={handleTransferToSavings} disabled={loading} className="p-3 rounded-xl mb-2" style={{ backgroundColor: colors.success, opacity: loading ? 0.7 : 1 }}>
-                        <Text className="text-white text-center font-semibold">{loading ? 'Traitement...' : 'Transférer'}</Text>
+                        <Text className="text-white text-center font-semibold">{loading ? t('common.loading') : t('budgets.transfer')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={resetModal} className="p-3 rounded-xl">
-                        <Text className="text-center" style={{ color: colors.textSecondary }}>Annuler</Text>
+                        <Text className="text-center" style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -503,7 +509,7 @@ const Budgets = () => {
                 <View className="mx-4 mt-4 p-4 rounded-xl" style={{ backgroundColor: `${colors.primary}10` }}>
                     <View className="flex-row justify-between items-center">
                         <View>
-                            <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>Espèces disponibles</Text>
+                            <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>{t('budgets.available_cash')}</Text>
                             <Text className="text-2xl font-bold" style={{ color: colors.primary }}>{formatAmount(cashAccount?.balance || 0)}</Text>
                         </View>
                         <MaterialIcons name="attach-money" size={40} color={colors.primary} />
@@ -511,7 +517,7 @@ const Budgets = () => {
                 </View>
 
                 <View className="flex-row justify-between items-center px-4 pt-6 mb-4">
-                    <Text className="text-xl font-semibold" style={{ color: colors.text }}>Mes budgets</Text>
+                    <Text className="text-xl font-semibold" style={{ color: colors.text }}>{t('budgets.my_budgets')}</Text>
                     <TouchableOpacity
                         onPress={() => {
                             setModalType('add');
@@ -528,7 +534,7 @@ const Budgets = () => {
                         }}
                     >
                         <MaterialIcons name="add" size={20} color="white" />
-                        <Text className="text-white font-semibold ml-1">Ajouter</Text>
+                        <Text className="text-white font-semibold ml-1">{t('budgets.add')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -537,7 +543,7 @@ const Budgets = () => {
                         <View className="flex-row items-center">
                             <MaterialIcons name="info" size={20} color={colors.warning} />
                             <Text className="text-sm ml-2 flex-1" style={{ color: colors.textSecondary }}>
-                                Ajoutez des espèces depuis l&#39;onglet Comptes pour pouvoir créer un budget
+                                {t('budgets.add_cash_hint')}
                             </Text>
                         </View>
                     </View>
@@ -546,8 +552,8 @@ const Budgets = () => {
                 {budgets.filter(b => !b.isClosed).length === 0 ? (
                     <View className="mx-4 p-8 rounded-xl items-center" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
                         <MaterialIcons name="account-balance-wallet" size={50} color={colors.textSecondary} />
-                        <Text className="text-center mt-3" style={{ color: colors.textSecondary }}>Aucun budget pour le moment</Text>
-                        <Text className="text-center text-sm" style={{ color: colors.textSecondary }}>Cliquez sur &#34Ajouter&#34; pour créer votre premier budget</Text>
+                        <Text className="text-center mt-3" style={{ color: colors.textSecondary }}>{t('budgets.no_budget')}</Text>
+                        <Text className="text-center text-sm" style={{ color: colors.textSecondary }}>{t('budgets.add_budget_hint')}</Text>
                     </View>
                 ) : (
                     budgets.filter(b => !b.isClosed).map((budget) => {
@@ -570,18 +576,18 @@ const Budgets = () => {
                                 </View>
 
                                 <View className="mb-2">
-                                    <Text className="text-sm" style={{ color: colors.textSecondary }}>Solde actuel</Text>
+                                    <Text className="text-sm" style={{ color: colors.textSecondary }}>{t('budgets.current_balance')}</Text>
                                     <Text className="text-2xl font-bold" style={{ color: budget.color }}>{formatAmount(solde)}</Text>
                                 </View>
 
                                 <View className="flex-row justify-between mb-2">
-                                    <Text className="text-xs" style={{ color: colors.textSecondary }}>Total: {formatAmount(totalReel)}</Text>
-                                    <Text className="text-xs" style={{ color: colors.error }}>Dépensé: {formatAmount(depenses)}</Text>
+                                    <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('budgets.total')}: {formatAmount(totalReel)}</Text>
+                                    <Text className="text-xs" style={{ color: colors.error }}>{t('budgets.spent')}: {formatAmount(depenses)}</Text>
                                 </View>
 
                                 <View className="mt-1">
                                     <View className="flex-row justify-between mb-1">
-                                        <Text className="text-xs" style={{ color: colors.textSecondary }}>Utilisation</Text>
+                                        <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('budgets.usage')}</Text>
                                         <Text className="text-xs font-medium" style={{ color: budget.color }}>{pourcentage.toFixed(0)}%</Text>
                                     </View>
                                     <View className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: colors.border }}>
@@ -592,15 +598,15 @@ const Budgets = () => {
                                 <View className="flex-row flex-wrap gap-2 mt-4">
                                     <TouchableOpacity onPress={() => { setSelectedBudget(budget); setModalType('alimenter'); setAmount(''); setDescription(''); setModalVisible(true); }} className="flex-1 py-2 rounded-xl flex-row items-center justify-center" style={{ backgroundColor: colors.primary }}>
                                         <MaterialIcons name="add" size={18} color="white" />
-                                        <Text className="text-white font-semibold ml-1 text-sm">Alimenter</Text>
+                                        <Text className="text-white font-semibold ml-1 text-sm">{t('budgets.top_up')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity onPress={() => { setSelectedBudget(budget); setModalType('depense'); setAmount(''); setDescription(''); setModalVisible(true); }} className="flex-1 py-2 rounded-xl flex-row items-center justify-center" style={{ backgroundColor: colors.error }}>
                                         <MaterialIcons name="shopping-cart" size={18} color="white" />
-                                        <Text className="text-white font-semibold ml-1 text-sm">Dépenser</Text>
+                                        <Text className="text-white font-semibold ml-1 text-sm">{t('budgets.spend')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity onPress={() => { setSelectedBudget(budget); setModalType('transferToSavings'); setAmount(''); setDescription(''); setModalVisible(true); }} className="flex-1 py-2 rounded-xl flex-row items-center justify-center" style={{ backgroundColor: colors.success }}>
                                         <MaterialIcons name="savings" size={18} color="white" />
-                                        <Text className="text-white font-semibold ml-1 text-sm">→ Épargne</Text>
+                                        <Text className="text-white font-semibold ml-1 text-sm">{t('budgets.to_savings')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>

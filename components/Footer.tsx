@@ -2,9 +2,11 @@ import React from "react";
 import {View, Text, TouchableOpacity, Linking} from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import {useTheme} from "@/hooks/use-theme";
+import {useTranslation} from "react-i18next";
 
 export const Footer: React.FC = () => {
     const { colors } = useTheme();
+    const { t } = useTranslation();
 
     const openPortfolio = () => {
         Linking.openURL('https://nyainafitiavana-portfolio.vercel.app/').catch(err =>
@@ -29,7 +31,7 @@ export const Footer: React.FC = () => {
                 </View>
 
                 <Text className="text-sm font-semibold text-center mb-2" style={{ color: colors.text }}>
-                    Développé par
+                    {t('home.developed_by')}
                 </Text>
 
                 <Text className="text-base font-bold text-center mb-1" style={{color: colors.primary}}>
@@ -37,7 +39,7 @@ export const Footer: React.FC = () => {
                 </Text>
 
                 <Text className="text-xs text-center mb-3" style={{ color: colors.textSecondary }}>
-                    © 2026 BudgetFlow - Tous droits réservés
+                    © 2026 BudgetFlow - {t('home.all_rights_reserved')}
                 </Text>
 
                 <View className="h-px my-2" style={{ backgroundColor: colors.border }} />

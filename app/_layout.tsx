@@ -5,8 +5,11 @@ import { useTheme } from '@/hooks/use-theme';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, ActivityIndicator } from "react-native";
+import { useEffect, useState } from "react";
+import { I18nextProvider } from 'react-i18next';
+import i18n, { getStoredLanguage, changeLanguage } from '@/i18';
 import "../global.css";
+import {ActivityIndicator, View} from "react-native";
 
 export const unstable_settings = {
     anchor: "(tabs)",
@@ -14,8 +17,18 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
     const { isDark, isLoading } = useTheme();
+    const [isI18nReady, setIsI18nReady] = useState(false);
 
-    if (isLoading) {
+    useEffect(() => {
+        const initLanguage = async () => {
+            const savedLang = await getStoredLanguage();
+            await changeLanguage(savedLang);
+            setIsI18nReady(true);
+        };
+        initLanguage();
+    }, []);
+
+    if (isLoading || !isI18nReady) {
         return (
             <View className="flex-1 items-center justify-center">
                 <ActivityIndicator size="large" color="#2563EB" />
@@ -36,7 +49,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
     return (
         <Provider store={store}>
-            <RootLayoutNav />
+            <I18nextProvider i18n={i18n}>
+                <RootLayoutNav />
+            </I18nextProvider>
         </Provider>
     );
 }

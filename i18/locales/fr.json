@@ -24,11 +24,12 @@
     "features": "Fonctionnalités principales",
     "budget_management": "Gestion des budgets",
     "budget_management_desc": "Créez et gérez vos budgets personnalisés",
+    "dashboard": "Tableau de bord",
     "dashboard_desc": "Visualisez vos dépenses en temps réel",
-    "security": "Sécurité renforcée",
-    "security_desc": "Code PIN optionnel pour protéger vos données",
     "theme": "Thème clair/sombre",
-    "theme_desc": "Adaptez l'app à votre préférence"
+    "theme_desc": "Adaptez l'app à votre préférence",
+    "developed_by": "Développé par",
+    "all_rights_reserved": "Tous droits réservés"
   },
   "dashboard": {
     "total_balance": "Solde total",
@@ -44,7 +45,10 @@
     "recent_transactions": "Dernières transactions",
     "no_transactions": "Aucune transaction pour le moment",
     "transactions_hint": "Les transactions apparaîtront ici",
-    "other_budgets": "autres budgets"
+    "other_budgets": "autres budgets",
+    "top_up": "Alimentation",
+    "transfer": "Transfert",
+    "spent": "Dépense"
   },
   "budgets": {
     "available_cash": "Espèces disponibles",
@@ -59,6 +63,7 @@
     "remaining": "Restant",
     "top_up": "Alimenter",
     "spend": "Dépenser",
+    "transfer": "Transférer",
     "to_savings": "→ Épargne",
     "add_cash_hint": "Ajoutez des espèces depuis l'onglet Comptes pour pouvoir créer un budget",
     "new_budget": "Nouveau budget",
@@ -78,7 +83,9 @@
     "history": "Historique",
     "history_title": "Historique - {{name}}",
     "no_transactions": "Aucune transaction pour ce budget",
-    "close": "Fermer"
+    "close": "Fermer",
+    "spent_from": "Dépense depuis {{name}}",
+    "transfer_to_savings_from": "Transfert vers épargne depuis {{name}}"
   },
   "accounts": {
     "bank_account": "Compte Bancaire",
@@ -96,7 +103,10 @@
     "transfer_bank_to_cash": "Transfert Banque → Espèces",
     "transfer_cash_to_savings": "Transfert Espèces → Épargne",
     "transfer_savings_to_cash": "Transfert Épargne → Espèces",
-    "amount": "Montant"
+    "amount": "Montant",
+    "top_up_from": "Alimentation depuis extérieur",
+    "added_to_bank": "{{amount}} ajouté au compte bancaire",
+    "withdrawal_savings_to_cash": "Retrait épargne vers espèces"
   },
   "settings": {
     "appearance": "Apparence",
@@ -115,7 +125,7 @@
     "delete_budgets_desc": "Supprimer uniquement les budgets",
     "delete_accounts": "Supprimer les comptes",
     "delete_accounts_desc": "Supprimer uniquement les comptes",
-    "reset_all": "🗑️ Réinitialiser toutes les données",
+    "reset_all": "Réinitialiser toutes les données",
     "reset_all_desc": "Supprimer tout",
     "version": "Version",
     "language": "Langue",
@@ -139,19 +149,26 @@
     "delete_transactions_confirm": "Cette action va supprimer tout l'historique des transactions.",
     "delete_transactions_success": "Transactions supprimées",
     "error": "Erreur",
-    "insufficient_cash": "Solde espèces insuffisant. Disponible: {{amount}}",
+    "insufficient_cash": "Solde espèce insuffisant. Disponible: {{amount}}",
+    "insufficient_budget": "Solde budget insuffisant. Disponible: {{amount}}",
+    "insufficient_saving": "Solde épargne insuffisant. Disponible: {{amount}}",
     "invalid_amount": "Montant invalide",
     "budget_name_required": "Nom du budget requis",
     "budget_created": "Budget \"{{name}}\" créé avec {{amount}}",
     "budget_topped_up": "{{amount}} ajouté au budget \"{{name}}\"",
     "budget_spent": "{{amount}} dépensé depuis \"{{name}}\"",
     "budget_transferred": "{{amount}} transféré vers l'épargne",
+    "transferred_from_savings": "{{amount}} transféré depuis l'épargne",
     "account_not_found": "Aucun compte bancaire trouvé",
-    "accounts_not_found": "Comptes non trouvés"
+    "accounts_not_found": "Comptes non trouvés",
+    "success_transfer_to_cash": "{{amount}} transféré vers espèces"
   },
   "common_errors": {
     "insufficient_bank_balance": "Solde bancaire insuffisant",
     "insufficient_cash_balance": "Solde espèces insuffisant",
     "insufficient_savings_balance": "Solde épargne insuffisant"
+  },
+  "transaction": {
+    "top_up": "Alimentation du {{field}} {{name}}"
   }
 }

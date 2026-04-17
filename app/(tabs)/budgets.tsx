@@ -5,7 +5,14 @@ import { useTheme } from '@/hooks/use-theme';
 import { useBudgetData } from '@/hooks/use-budget-data';
 import { useCurrency } from '@/hooks/use-currency';
 import { useAppDispatch } from '@/store/hooks';
-import { updateAccountBalance, updateBudgetSpent, addTransaction, addBudget, deleteBudget } from '@/store/slices/data.slice';
+import {
+    updateAccountBalance,
+    updateBudgetSpent,
+    addTransaction,
+    addBudget,
+    deleteBudget,
+    updateBudget
+} from '@/store/slices/data.slice';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {useTranslation} from "react-i18next";
@@ -18,7 +25,7 @@ const Budgets = () => {
     const dispatch = useAppDispatch();
 
     const [modalVisible, setModalVisible] = useState(false);
-    const [modalType, setModalType] = useState<'add' | 'alimenter' | 'depense' | 'transferToSavings' | 'history' | null>(null);
+    const [modalType, setModalType] = useState<'add' | 'alimenter' | 'depense' | 'transferToSavings' | 'history' | 'edit' | null>(null);
     const [selectedBudget, setSelectedBudget] = useState<any>(null);
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
@@ -234,6 +241,89 @@ const Budgets = () => {
         }
     };
 
+    const handleEditBudget = async () => {
+        if (!selectedBudget) {
+            console.log('ato')
+            Alert.alert(t('alerts.error'), 'Budget non sélectionné');
+            return;
+        }
+
+        if (!budgetName.trim()) {
+            console.log('et')
+            Alert.alert(t('alerts.error'), t('alerts.budget_name_required'));
+            return;
+        }
+
+        setLoading(true);
+        try {
+            console.log('xx');
+            await dispatch(updateBudget({
+                budgetId: selectedBudget.id,
+                name: budgetName,
+                color: budgetColor
+            })).unwrap();
+
+            await refreshData();
+            resetModal();
+            Alert.alert(t('common.success'), `Budget "${selectedBudget.name}" modifié en "${budgetName}"`);
+        } catch (error: any) {
+            Alert.alert(t('alerts.error'), error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const renderEditModal = () => (
+        <Modal animationType="slide" transparent={true} visible={modalVisible && modalType === 'edit' && selectedBudget !== null} onRequestClose={resetModal}>
+            <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background }}>
+                    <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>{t('common.edit')}</Text>
+                    <Text className="text-sm mb-2" style={{ color: colors.textSecondary }}>Budget actuel: {selectedBudget?.name}</Text>
+
+                    <TextInput
+                        placeholder="Nouveau nom"
+                        placeholderTextColor={colors.textSecondary}
+                        value={budgetName}
+                        onChangeText={setBudgetName}
+                        className="p-3 rounded-xl mb-3"
+                        style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }}
+                    />
+
+                    <Text className="text-sm mb-2" style={{ color: colors.text }}>Nouvelle couleur:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                        <View className="flex-row space-x-2">
+                            {colorsList.map((color) => (
+                                <TouchableOpacity
+                                    key={color}
+                                    onPress={() => setBudgetColor(color)}
+                                    className="w-10 h-10 rounded-full items-center justify-center"
+                                    style={{ backgroundColor: color, borderWidth: budgetColor === color ? 3 : 0, borderColor: 'white' }}
+                                >
+                                    {budgetColor === color && <MaterialIcons name="check" size={16} color="white" />}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </ScrollView>
+
+                    <TouchableOpacity
+                        onPress={handleEditBudget}
+                        disabled={loading}
+                        className="p-3 rounded-xl mb-2"
+                        style={{ backgroundColor: colors.warning, opacity: loading ? 0.7 : 1 }}
+                    >
+                        <Text className="text-white text-center font-semibold">
+                            {loading ? t('common.loading') : t('common.save')}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={resetModal} className="p-3 rounded-xl">
+                        <Text className="text-center" style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+
     const handleTransferToSavings = async () => {
         if (!selectedBudget) {
             Alert.alert(t('alerts.error'), 'Budget non sélectionné');
@@ -385,7 +475,10 @@ const Budgets = () => {
                                                     <MaterialIcons name={icon.name as any} size={20} color={icon.color} />
                                                 </View>
                                                 <View className="flex-1">
-                                                    <Text className="font-semibold" style={{ color: colors.text }}>{item.operation}</Text>
+                                                    <Text className="font-semibold" style={{ color: colors.text }}>
+                                                        {item.operation === 'Alimentation' ? t('dashboard.top_up') :
+                                                        item.operation === 'Transfert' ? t('dashboard.transfer') : t('dashboard.spent')}
+                                                    </Text>
                                                     <Text className="text-xs" style={{ color: colors.textSecondary }} numberOfLines={1}>{item.description}</Text>
                                                     <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>{formatDate(item.date)}</Text>
                                                 </View>
@@ -566,6 +659,18 @@ const Budgets = () => {
                                         <Text className="font-semibold text-base" style={{ color: colors.text }}>{budget.name}</Text>
                                     </View>
                                     <View className="flex-row items-center">
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                setSelectedBudget(budget);
+                                                setBudgetName(budget.name);
+                                                setBudgetColor(budget.color);
+                                                setModalType('edit');
+                                                setModalVisible(true);
+                                            }}
+                                            className="mr-3 p-1"
+                                        >
+                                            <MaterialIcons name="edit" size={22} color={colors.warning} />
+                                        </TouchableOpacity>
                                         <TouchableOpacity onPress={() => { setSelectedBudget(budget); setModalType('history'); setModalVisible(true); }} className="mr-3 p-1">
                                             <MaterialIcons name="history" size={22} color={colors.primary} />
                                         </TouchableOpacity>
@@ -620,6 +725,7 @@ const Budgets = () => {
             {renderAlimenterModal()}
             {renderDepenseModal()}
             {renderTransferModal()}
+            {renderEditModal()}
             <HistoryModal />
         </SafeAreaView>
     );

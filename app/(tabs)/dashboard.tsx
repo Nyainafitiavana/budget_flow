@@ -101,7 +101,7 @@ const Dashboard = () => {
 
                     {budgets.filter(b => !b.isClosed).length === 0 ? (
                         <View className="p-4 rounded-xl items-center" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-                            <Text className="text-sm" style={{ color: colors.textSecondary }}>{t('dashboard.no_budgets')}</Text>
+                            <Text className="text-sm" style={{ color: colors.textSecondary }}>{t('dashboard.no_budget')}</Text>
                             <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>{t('dashboard.add_budget_hint')}</Text>
                         </View>
                     ) : (

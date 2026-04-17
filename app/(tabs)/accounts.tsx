@@ -281,8 +281,8 @@ const Accounts = () => {
                             <MaterialIcons name="attach-money" size={24} color={colors.success} />
                         </View>
                         <View className="flex-1">
-                            <Text className="text-lg font-semibold" style={{ color: colors.text }}>Espèces</Text>
-                            <Text className="text-sm" style={{ color: colors.textSecondary }}>Liquide disponible</Text>
+                            <Text className="text-lg font-semibold" style={{ color: colors.text }}>{t('accounts.cash')}</Text>
+                            <Text className="text-sm" style={{ color: colors.textSecondary }}>{t('accounts.available_cash')}</Text>
                         </View>
                         <Text className="text-2xl font-bold" style={{ color: colors.text }}>
                             {formatAmount(cashAccount?.balance || 0)}
@@ -300,7 +300,7 @@ const Accounts = () => {
                             style={{ backgroundColor: colors.warning || '#F59E0B' }}
                         >
                             <MaterialIcons name="savings" size={20} color="white" />
-                            <Text className="text-white font-semibold ml-1">Espèces → Épargne</Text>
+                            <Text className="text-white font-semibold ml-1">{t('accounts.cash_to_savings')}</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -337,7 +337,7 @@ const Accounts = () => {
                             style={{ backgroundColor: colors.success }}
                         >
                             <MaterialIcons name="arrow-upward" size={20} color="white" />
-                            <Text className="text-white font-semibold ml-1">Épargne → Espèces</Text>
+                            <Text className="text-white font-semibold ml-1">{t('accounts.savings_to_cash')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

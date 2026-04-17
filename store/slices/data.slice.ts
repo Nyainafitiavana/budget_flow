@@ -1,7 +1,9 @@
 // store/slices/data.slice.ts
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { budgetStorageService } from '@/services/storage.service';
-import { Account, Budget, Transaction } from '@/types';
+import {createAsyncThunk, createSlice} from '@reduxjs/toolkit';
+import {budgetStorageService} from '@/services/storage.service';
+import {Account, Budget, Transaction} from '@/types';
+import {storageService} from "@/hooks/use-storage";
+import i18n from "i18next";
 
 interface DataState {
     accounts: Account[];
@@ -17,6 +19,12 @@ const initialState: DataState = {
     transactions: [],
     isLoading: false,
     error: null,
+};
+
+// Helper function to get translation
+const t = (key: string, options?: any) => {
+    // eslint-disable-next-line import/no-named-as-default-member
+    return i18n.t(key, options);
 };
 
 // Thunk pour initialiser les données par défaut
@@ -49,7 +57,7 @@ export const initializeDefaultData = createAsyncThunk('data/initializeDefaultDat
             balance: 0,
         });
 
-        console.log('✅ Comptes par défaut créés');
+        console.log('Comptes par défaut créés');
     }
 
     // Charger toutes les données après initialisation
@@ -83,7 +91,6 @@ export const updateAccountBalance = createAsyncThunk(
             budgetStorageService.getBudgets(),
             budgetStorageService.getTransactions(),
         ]);
-        console.log('📊 Nouveaux comptes après update:', accounts.map(a => ({ name: a.name, balance: a.balance })));
         return { accounts, budgets, transactions };
     }
 );
@@ -145,7 +152,7 @@ export const addBudget = createAsyncThunk(
             source: 'cash',
             destination: 'budget',
             amount: budget.amount,
-            description: `Création du budget ${budget.name}`,
+            description: t('budgets.creation_of_budget', {name: budget.name}),
             date: new Date(),
         } as any);
 
@@ -162,8 +169,6 @@ export const addBudget = createAsyncThunk(
 
 // Thunk pour supprimer un budget (remet le solde restant dans les espèces)
 export const deleteBudget = createAsyncThunk('data/deleteBudget', async (budgetId: string) => {
-    console.log('🗑️ deleteBudget - Début');
-
     // 1. Récupérer le budget à supprimer
     const budgets = await budgetStorageService.getBudgets();
     const budgetToDelete = budgets.find(b => b.id === budgetId);
@@ -180,9 +185,6 @@ export const deleteBudget = createAsyncThunk('data/deleteBudget', async (budgetI
         soldeRestant = budgetToDelete.amount + Math.abs(budgetToDelete.spent);
     }
 
-    console.log(' Budget à supprimer:', budgetToDelete.name);
-    console.log(' Solde restant à remettre dans espèces:', soldeRestant);
-
     // 3. Remettre le solde dans les espèces (si > 0)
     if (soldeRestant > 0) {
         const accounts = await budgetStorageService.getAccounts();
@@ -191,7 +193,6 @@ export const deleteBudget = createAsyncThunk('data/deleteBudget', async (budgetI
         if (cashAccount) {
             const newCashBalance = cashAccount.balance + soldeRestant;
             await budgetStorageService.updateAccountBalance(cashAccount.id, newCashBalance);
-            console.log(' Espèces après ajout:', newCashBalance);
 
             // 4. Ajouter une transaction pour tracer le remboursement
             await budgetStorageService.addTransaction({
@@ -200,7 +201,7 @@ export const deleteBudget = createAsyncThunk('data/deleteBudget', async (budgetI
                 source: 'budget',
                 destination: 'cash',
                 amount: soldeRestant,
-                description: `Remboursement du budget supprimé "${budgetToDelete.name}"`,
+                description: t('budgets.reimbursement_of_budget_deleted', {name: budgetToDelete.name}),
                 date: new Date(),
             } as any);
         }
@@ -208,7 +209,6 @@ export const deleteBudget = createAsyncThunk('data/deleteBudget', async (budgetI
 
     // 5. Supprimer le budget
     await budgetStorageService.deleteBudget(budgetId);
-    console.log('Budget supprimé');
 
     // 6. Recharger toutes les données
     const [newAccounts, newBudgets, newTransactions] = await Promise.all([
@@ -219,6 +219,52 @@ export const deleteBudget = createAsyncThunk('data/deleteBudget', async (budgetI
 
     return { accounts: newAccounts, budgets: newBudgets, transactions: newTransactions };
 });
+
+// Thunk pour mettre à jour un budget (nom et couleur)
+export const updateBudget = createAsyncThunk(
+    'data/updateBudget',
+    async ({ budgetId, name, color }: { budgetId: string; name: string; color: string }) => {
+        // 1. Récupérer tous les budgets
+        const budgets = await budgetStorageService.getBudgets();
+        const budgetIndex = budgets.findIndex(b => b.id === budgetId);
+
+        if (budgetIndex === -1) {
+            console.log('budget non trouvé');
+            throw new Error('Budget non trouvé');
+        }
+
+        // 2. Mettre à jour le budget
+        budgets[budgetIndex] = {
+            ...budgets[budgetIndex],
+            name: name,
+            color: color,
+            updatedAt: new Date(),
+        };
+
+        // 3. Sauvegarder dans le storage
+        await storageService.setItem('budgets', budgets);
+
+        // 4. Ajouter une transaction pour tracer la modification (optionnel)
+        await budgetStorageService.addTransaction({
+            type: 'edit',
+            operation: 'Modification',
+            source: 'budget',
+            destination: 'budget',
+            amount: 0,
+            description: t('budgets.budget_modification', {oldName: budgets[budgetIndex].name, newName: name}),
+            date: new Date(),
+        } as any);
+
+        // 5. Recharger toutes les données
+        const [newAccounts, newBudgets, newTransactions] = await Promise.all([
+            budgetStorageService.getAccounts(),
+            budgetStorageService.getBudgets(),
+            budgetStorageService.getTransactions(),
+        ]);
+
+        return { accounts: newAccounts, budgets: newBudgets, transactions: newTransactions };
+    }
+);
 
 // Thunk pour ajouter un compte
 export const addAccount = createAsyncThunk(
@@ -343,6 +389,19 @@ const dataSlice = createSlice({
             .addCase(deleteBudget.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.error.message || 'Erreur lors de la suppression';
+            })
+            .addCase(updateBudget.pending, (state) => {
+                state.isLoading = true;
+            })
+            .addCase(updateBudget.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.accounts = action.payload.accounts;
+                state.budgets = action.payload.budgets;
+                state.transactions = action.payload.transactions;
+            })
+            .addCase(updateBudget.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.error.message || 'Erreur lors de la modification du budget';
             })
             // addAccount
             .addCase(addAccount.pending, (state) => {

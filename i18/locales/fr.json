@@ -85,7 +85,10 @@
     "no_transactions": "Aucune transaction pour ce budget",
     "close": "Fermer",
     "spent_from": "Dépense depuis {{name}}",
-    "transfer_to_savings_from": "Transfert vers épargne depuis {{name}}"
+    "transfer_to_savings_from": "Transfert vers épargne depuis {{name}}",
+    "creation_of_budget": "Création du budget {{name}}",
+    "reimbursement_of_budget_deleted": "Remboursement du budget supprimé {{name}}",
+    "budget_modification": "Modification du budget {{oldName}} → {{newName}}"
   },
   "accounts": {
     "bank_account": "Compte Bancaire",

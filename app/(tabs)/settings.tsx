@@ -35,14 +35,14 @@ const Settings = () => {
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: t('settings.rest_all'),
+                    text: t('settings.reset_all'),
                     style: 'destructive',
                     onPress: async () => {
                         setIsResetting(true);
                         try {
                             await storageService.clearAll();
                             await refreshData();
-                            showNotification(t('common.success'), t('alerts.rest_success'), 'success');
+                            showNotification(t('common.success'), t('alerts.reset_success'), 'success');
                         } catch (err) {
                             showNotification(t('common.error'), 'Unable to reset data', 'error');
                         } finally {

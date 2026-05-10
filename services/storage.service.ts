@@ -1,3 +1,4 @@
+// services/storage.service.ts
 import { storageService } from '@/hooks/use-storage';
 import { Account, Budget, Transaction } from '@/types';
 
@@ -15,10 +16,7 @@ class BudgetStorageService {
     }
 
     async addAccount(account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>): Promise<Account> {
-        console.log('📝 addAccount appelé:', account);
         const accounts = await this.getAccounts();
-        console.log('📊 Comptes avant ajout:', accounts.length);
-
         const bankAccounts = accounts.filter(a => a.type === 'bank');
         if (account.type === 'bank' && bankAccounts.length >= 4) {
             throw new Error('Maximum 4 comptes bancaires autorisés');
@@ -26,29 +24,23 @@ class BudgetStorageService {
 
         const newAccount: Account = {
             ...account,
-            id: Date.now().toString(),
+            id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, // ← ID unique garanti
             createdAt: new Date(),
             updatedAt: new Date(),
         };
 
         accounts.push(newAccount);
         await storageService.setItem(this.KEYS.ACCOUNTS, accounts);
-        console.log('✅ Compte ajouté:', newAccount);
         return newAccount;
     }
 
     async updateAccountBalance(accountId: string, newBalance: number): Promise<void> {
-        console.log('🔄 updateAccountBalance appelé:', { accountId, newBalance });
         const accounts = await this.getAccounts();
-        console.log('📊 Comptes avant mise à jour:', accounts);
         const accountIndex = accounts.findIndex(a => a.id === accountId);
         if (accountIndex !== -1) {
             accounts[accountIndex].balance = newBalance;
             accounts[accountIndex].updatedAt = new Date();
             await storageService.setItem(this.KEYS.ACCOUNTS, accounts);
-            console.log('✅ Compte mis à jour:', accounts[accountIndex]);
-        } else {
-            console.log('❌ Compte non trouvé:', accountId);
         }
     }
 
@@ -58,32 +50,19 @@ class BudgetStorageService {
         return budgets || [];
     }
 
-    async addBudget(budget: Omit<Budget, 'id' | 'spent' | 'remaining' | 'isClosed' | 'createdAt' | 'updatedAt'>): Promise<Budget> {
+    async addBudget(budget: Omit<Budget, 'id' | 'totalDepense' | 'isClosed' | 'createdAt' | 'updatedAt'>): Promise<Budget> {
         const budgets = await this.getBudgets();
         const newBudget: Budget = {
             ...budget,
             id: Date.now().toString(),
-            spent: 0,
-            remaining: budget.amount,
+            totalDepense: 0,
             isClosed: false,
             createdAt: new Date(),
             updatedAt: new Date(),
         };
-
         budgets.push(newBudget);
         await storageService.setItem(this.KEYS.BUDGETS, budgets);
         return newBudget;
-    }
-
-    async updateBudgetSpent(budgetId: string, amount: number): Promise<void> {
-        const budgets = await this.getBudgets();
-        const budgetIndex = budgets.findIndex(b => b.id === budgetId);
-        if (budgetIndex !== -1) {
-            budgets[budgetIndex].spent += amount;
-            budgets[budgetIndex].remaining = budgets[budgetIndex].amount - budgets[budgetIndex].spent;
-            budgets[budgetIndex].updatedAt = new Date();
-            await storageService.setItem(this.KEYS.BUDGETS, budgets);
-        }
     }
 
     async deleteBudget(budgetId: string): Promise<void> {
@@ -99,7 +78,6 @@ class BudgetStorageService {
     }
 
     async addTransaction(transaction: Omit<Transaction, 'id' | 'status' | 'createdAt'>): Promise<Transaction> {
-        console.log('🔄 addTransaction appelé:', transaction);
         const transactions = await this.getTransactions();
         const newTransaction: Transaction = {
             ...transaction,
@@ -107,17 +85,9 @@ class BudgetStorageService {
             status: 'completed',
             createdAt: new Date(),
         };
-
         transactions.push(newTransaction);
         await storageService.setItem(this.KEYS.TRANSACTIONS, transactions);
-        console.log('✅ Transaction ajoutée:', newTransaction);
         return newTransaction;
-    }
-
-    async deleteTransaction(transactionId: string): Promise<void> {
-        const transactions = await this.getTransactions();
-        const filtered = transactions.filter(t => t.id !== transactionId);
-        await storageService.setItem(this.KEYS.TRANSACTIONS, filtered);
     }
 
     // ============ RESET ============

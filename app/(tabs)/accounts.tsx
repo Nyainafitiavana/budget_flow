@@ -1,3 +1,4 @@
+// app/(tabs)/accounts.tsx - Version corrigée
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Alert } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
@@ -8,7 +9,8 @@ import { updateAccountBalance, addTransaction } from '@/store/slices/data.slice'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Account } from '@/types';
-import {useTranslation} from "react-i18next";
+import { useTranslation } from "react-i18next";
+import { budgetStorageService } from '@/services/storage.service'; // ← AJOUTER CET IMPORT
 
 type ModalType = 'ALIMENT-BANK' | 'BANK-TO-ESPECE' | 'ESPECE-TO-EPARGNE' | 'EPARGNE-TO-ESPECE';
 
@@ -42,7 +44,7 @@ const Accounts = () => {
             return;
         }
         if (!bankAccount) {
-            Alert.alert(t('common.error'), 'Aucun compte bancaire trouvé');
+            Alert.alert(t('common.error'), t('alerts.account_not_found'));
             return;
         }
 
@@ -65,7 +67,7 @@ const Accounts = () => {
 
             await refreshData();
             resetModal();
-            Alert.alert(t('common.success'), t('accounts.added_to_bank', {amount: formatAmount(numAmount)}));
+            Alert.alert(t('common.success'), t('accounts.added_to_bank', { amount: formatAmount(numAmount) }));
         } catch (error: any) {
             Alert.alert(t('common.error'), error.message);
         } finally {
@@ -73,7 +75,7 @@ const Accounts = () => {
         }
     }, [amount, bankAccount, dispatch, formatAmount, refreshData, resetModal, t]);
 
-    // 2. Banque → Espèces
+    // 2. Banque → Espèces (CORRIGÉE - utilise budgetStorageService directement)
     const handleBankToCash = useCallback(async () => {
         const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
@@ -81,7 +83,7 @@ const Accounts = () => {
             return;
         }
         if (!bankAccount || !cashAccount) {
-            Alert.alert(t('common.error'), 'Comptes non trouvés');
+            Alert.alert(t('common.error'), t('alerts.accounts_not_found'));
             return;
         }
         if (bankAccount.balance < numAmount) {
@@ -91,37 +93,41 @@ const Accounts = () => {
 
         setLoading(true);
         try {
-            // Diminuer la banque
-            await dispatch(updateAccountBalance({
-                accountId: bankAccount.id,
-                newBalance: bankAccount.balance - numAmount
-            })).unwrap();
+            console.log('💰 Transfert Banque → Espèces');
+            console.log('   Banque avant:', bankAccount.balance);
+            console.log('   Espèces avant:', cashAccount.balance);
+            console.log('   Montant:', numAmount);
 
-            // Augmenter les espèces
-            await dispatch(updateAccountBalance({
-                accountId: cashAccount.id,
-                newBalance: cashAccount.balance + numAmount
-            })).unwrap();
+            // 1. Mettre à jour la banque (diminuer)
+            await budgetStorageService.updateAccountBalance(bankAccount.id, bankAccount.balance - numAmount);
 
-            await dispatch(addTransaction({
+            // 2. Mettre à jour les espèces (augmenter)
+            await budgetStorageService.updateAccountBalance(cashAccount.id, cashAccount.balance + numAmount);
+
+            // 3. Ajouter la transaction
+            await budgetStorageService.addTransaction({
                 type: 'transfer',
                 operation: 'Transfert',
                 source: 'bank',
                 destination: 'cash',
                 amount: numAmount,
-                description: t('accounts.transfer_bank_to_cash'),
+                description: 'Transfert bancaire vers espèces',
                 date: new Date(),
-            })).unwrap();
+            });
 
+            // 4. Recharger les données
             await refreshData();
+
+            console.log('✅ Transfert réussi');
             resetModal();
-            Alert.alert(t('common.success'), t('alerts.success_transfer_to_cash', {amount: formatAmount(numAmount)}));
+            Alert.alert(t('common.success'), `${formatAmount(numAmount)} ${t('accounts.transferred_to_cash')}`);
         } catch (error: any) {
+            console.error('❌ Erreur transfert:', error);
             Alert.alert(t('common.error'), error.message);
         } finally {
             setLoading(false);
         }
-    }, [amount, bankAccount, cashAccount, dispatch, formatAmount, refreshData, resetModal, t]);
+    }, [amount, bankAccount, cashAccount, formatAmount, refreshData, resetModal, t]);
 
     // 3. Espèces → Épargne
     const handleCashToEpargne = useCallback(async () => {
@@ -131,26 +137,31 @@ const Accounts = () => {
             return;
         }
         if (!cashAccount || !savingsAccount) {
-            Alert.alert(t('common.error'), 'Comptes non trouvés');
+            Alert.alert(t('common.error'), t('alerts.accounts_not_found'));
             return;
         }
         if (cashAccount.balance < numAmount) {
-            Alert.alert(t('common.error'), t('alerts.insufficient_cash', {amount: formatAmount(cashAccount.balance)}));
+            Alert.alert(t('common.error'), t('alerts.insufficient_cash', { amount: formatAmount(cashAccount.balance) }));
             return;
         }
 
         setLoading(true);
         try {
+            console.log('💰 Transfert Espèces → Épargne (via Redux)');
+
+            // 1. Diminuer les espèces
             await dispatch(updateAccountBalance({
                 accountId: cashAccount.id,
                 newBalance: cashAccount.balance - numAmount
             })).unwrap();
 
+            // 2. Augmenter l'épargne
             await dispatch(updateAccountBalance({
                 accountId: savingsAccount.id,
                 newBalance: savingsAccount.balance + numAmount
             })).unwrap();
 
+            // 3. Ajouter la transaction
             await dispatch(addTransaction({
                 type: 'transfer',
                 operation: 'Transfert',
@@ -163,13 +174,14 @@ const Accounts = () => {
 
             await refreshData();
             resetModal();
-            Alert.alert(t('common.success'), t('alerts.budget_transferred', {amount: formatAmount(numAmount)}));
+            Alert.alert(t('common.success'), t('alerts.budget_transferred', { amount: formatAmount(numAmount) }));
         } catch (error: any) {
+            console.error('❌ Erreur transfert:', error);
             Alert.alert(t('common.error'), error.message);
         } finally {
             setLoading(false);
         }
-    }, [amount, cashAccount, savingsAccount, t, formatAmount, dispatch, refreshData, resetModal]);
+    }, [amount, cashAccount, savingsAccount, dispatch, formatAmount, refreshData, resetModal, t]);
 
     // 4. Épargne → Espèces
     const handleSavingsToCash = useCallback(async () => {
@@ -179,27 +191,24 @@ const Accounts = () => {
             return;
         }
         if (!savingsAccount || !cashAccount) {
-            Alert.alert(t('common.error'), 'Comptes non trouvés');
+            Alert.alert(t('common.error'), t('alerts.accounts_not_found'));
             return;
         }
         if (savingsAccount.balance < numAmount) {
-            Alert.alert(t('common.error'), t('alerts.insufficient_saving', {amount: formatAmount(savingsAccount.balance)}));
+            Alert.alert(t('common.error'), t('alerts.insufficient_saving', { amount: formatAmount(savingsAccount.balance) }));
             return;
         }
 
         setLoading(true);
         try {
-            await dispatch(updateAccountBalance({
-                accountId: savingsAccount.id,
-                newBalance: savingsAccount.balance - numAmount
-            })).unwrap();
+            // 1. Diminuer l'épargne
+            await budgetStorageService.updateAccountBalance(savingsAccount.id, savingsAccount.balance - numAmount);
 
-            await dispatch(updateAccountBalance({
-                accountId: cashAccount.id,
-                newBalance: cashAccount.balance + numAmount
-            })).unwrap();
+            // 2. Augmenter les espèces
+            await budgetStorageService.updateAccountBalance(cashAccount.id, cashAccount.balance + numAmount);
 
-            await dispatch(addTransaction({
+            // 3. Ajouter la transaction
+            await budgetStorageService.addTransaction({
                 type: 'transfer',
                 operation: 'Transfert',
                 source: 'savings',
@@ -207,17 +216,17 @@ const Accounts = () => {
                 amount: numAmount,
                 description: t('accounts.withdrawal_savings_to_cash'),
                 date: new Date(),
-            })).unwrap();
+            });
 
             await refreshData();
             resetModal();
-            Alert.alert(t('common.success'), t('alerts.transferred_from_savings', {amount: formatAmount(numAmount)}));
+            Alert.alert(t('common.success'), t('alerts.transferred_from_savings', { amount: formatAmount(numAmount) }));
         } catch (error: any) {
             Alert.alert(t('common.error'), error.message);
         } finally {
             setLoading(false);
         }
-    }, [amount, savingsAccount, cashAccount, t, formatAmount, dispatch, refreshData, resetModal]);
+    }, [amount, savingsAccount, cashAccount, formatAmount, refreshData, resetModal, t]);
 
     if (isLoading) {
         return (
@@ -237,7 +246,7 @@ const Accounts = () => {
                             <MaterialIcons name="account-balance" size={24} color={colors.primary} />
                         </View>
                         <View className="flex-1">
-                            <Text className="text-lg font-semibold" style={{ color: colors.text }}>{ t('accounts.bank_account') }</Text>
+                            <Text className="text-lg font-semibold" style={{ color: colors.text }}>{t('accounts.bank_account')}</Text>
                             <Text className="text-sm" style={{ color: colors.textSecondary }}>{bankAccount?.bankName || 'Banque'}</Text>
                         </View>
                         <Text className="text-2xl font-bold" style={{ color: colors.text }}>
@@ -256,7 +265,7 @@ const Accounts = () => {
                             style={{ backgroundColor: colors.primary }}
                         >
                             <MaterialIcons name="add" size={20} color="white" />
-                            <Text className="text-white font-semibold ml-1">{ t('accounts.top_up') }</Text>
+                            <Text className="text-white font-semibold ml-1">{t('accounts.top_up')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -269,7 +278,7 @@ const Accounts = () => {
                             style={{ backgroundColor: colors.secondary || '#3B82F6', opacity: 0.8 }}
                         >
                             <MaterialIcons name="swap-horiz" size={20} color="white" />
-                            <Text className="text-white font-semibold ml-1">{ t('accounts.to_cash') }</Text>
+                            <Text className="text-white font-semibold ml-1">{t('accounts.to_cash')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -306,7 +315,7 @@ const Accounts = () => {
 
                     <View className="mt-3 p-3 rounded-xl" style={{ backgroundColor: `${colors.primary}10` }}>
                         <Text className="text-xs text-center" style={{ color: colors.textSecondary }}>
-                            💡 { t('accounts.cash_info') }
+                            💡 {t('accounts.cash_info')}
                         </Text>
                     </View>
                 </View>
@@ -318,8 +327,8 @@ const Accounts = () => {
                             <MaterialIcons name="savings" size={24} color={colors.success} />
                         </View>
                         <View className="flex-1">
-                            <Text className="text-lg font-semibold" style={{ color: colors.text }}>{ t('accounts.savings') }</Text>
-                            <Text className="text-sm" style={{ color: colors.textSecondary }}>{ t('accounts.savings_info') }</Text>
+                            <Text className="text-lg font-semibold" style={{ color: colors.text }}>{t('accounts.savings')}</Text>
+                            <Text className="text-sm" style={{ color: colors.textSecondary }}>{t('accounts.savings_info')}</Text>
                         </View>
                         <Text className="text-2xl font-bold" style={{ color: colors.text }}>
                             {formatAmount(savingsAccount?.balance || 0)}
@@ -352,14 +361,14 @@ const Accounts = () => {
                     <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                         <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background }}>
                             <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>
-                                {modalType === 'ALIMENT-BANK' && t('accounts.top_up_bank') }
+                                {modalType === 'ALIMENT-BANK' && t('accounts.top_up_bank')}
                                 {modalType === 'BANK-TO-ESPECE' && t('accounts.transfer_bank_to_cash')}
                                 {modalType === 'ESPECE-TO-EPARGNE' && t('accounts.transfer_cash_to_savings')}
                                 {modalType === 'EPARGNE-TO-ESPECE' && t('accounts.transfer_savings_to_cash')}
                             </Text>
 
                             <TextInput
-                                placeholder={ t('accounts.amount') }
+                                placeholder={t('accounts.amount')}
                                 placeholderTextColor={colors.textSecondary}
                                 keyboardType="numeric"
                                 value={amount}
@@ -376,7 +385,7 @@ const Accounts = () => {
                                     style={{ backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }}
                                 >
                                     <Text className="text-white text-center font-semibold">
-                                        {loading ? t('common.loading') :  t('accounts.top_up_bank') }
+                                        {loading ? t('common.loading') : t('accounts.top_up_bank')}
                                     </Text>
                                 </TouchableOpacity>
                             )}
@@ -424,7 +433,7 @@ const Accounts = () => {
                                 onPress={resetModal}
                                 className="p-3 rounded-xl"
                             >
-                                <Text className="text-center" style={{ color: colors.textSecondary }}>{ t('common.cancel') }</Text>
+                                <Text className="text-center" style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -432,6 +441,5 @@ const Accounts = () => {
             </ScrollView>
         </SafeAreaView>
     );
-};
-
+}
 export default Accounts;

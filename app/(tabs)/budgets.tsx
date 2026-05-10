@@ -1,4 +1,4 @@
-// app/(tabs)/budgets.tsx - Version corrigée pour handleAlimenterBudget
+// app/(tabs)/budgets.tsx
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, ActivityIndicator, Alert, FlatList } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
@@ -7,7 +7,6 @@ import { useCurrency } from '@/hooks/use-currency';
 import { useAppDispatch } from '@/store/hooks';
 import {
     updateAccountBalance,
-    updateBudgetSpent,
     addTransaction,
     addBudget,
     deleteBudget,
@@ -15,7 +14,7 @@ import {
 } from '@/store/slices/data.slice';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import {useTranslation} from "react-i18next";
+import { useTranslation } from "react-i18next";
 
 const Budgets = () => {
     const { colors } = useTheme();
@@ -43,20 +42,23 @@ const Budgets = () => {
         '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#06B6D4'
     ];
 
-    const getBudgetTotals = (budget: any) => {
-        if (!budget) return { totalReel: 0, depenses: 0, solde: 0, pourcentage: 0 };
-        let totalReel = budget.amount;
-        let depenses = 0;
-        if (budget.spent < 0) {
-            totalReel = budget.amount + Math.abs(budget.spent);
-            depenses = 0;
-        } else {
-            totalReel = budget.amount;
-            depenses = budget.spent;
-        }
-        const solde = totalReel - depenses;
-        const pourcentage = totalReel > 0 ? (depenses / totalReel) * 100 : 0;
-        return { totalReel, depenses, solde, pourcentage };
+    // Calcul des totaux à partir des transactions
+    const getBudgetTotals = (budgetId: string) => {
+        const budgetTransactions = transactions.filter(t => t.budgetId === budgetId);
+
+        const totalAlimente = budgetTransactions
+            .filter(t => t.operation === 'Alimentation')
+            .reduce((sum, t) => sum + t.amount, 0);
+
+        // Inclure à la fois les 'Dépense' ET les 'Transfert' vers savings
+        const totalDepense = budgetTransactions
+            .filter(t => t.operation === 'Dépense' || (t.operation === 'Transfert' && t.destination === 'savings'))
+            .reduce((sum, t) => sum + t.amount, 0);
+
+        const solde = totalAlimente - totalDepense;
+        const pourcentage = totalAlimente > 0 ? (totalDepense / totalAlimente) * 100 : 0;
+
+        return { totalAlimente, totalDepense, solde, pourcentage };
     };
 
     const getBudgetTransactions = (budgetId: string) => {
@@ -85,6 +87,9 @@ const Budgets = () => {
         setSelectedBudget(null);
         setAmount('');
         setDescription('');
+        setBudgetName('');
+        setBudgetAmount('');
+        setBudgetColor('#3B82F6');
     };
 
     const handleAddBudget = async () => {
@@ -98,21 +103,19 @@ const Budgets = () => {
             return;
         }
 
-        // Vérifier le solde espèces avant
         if (!cashAccount || cashAccount.balance < numAmount) {
             Alert.alert(
                 t('alerts.error'),
-                t('alerts.insufficient_cash', {amount: formatAmount(cashAccount?.balance || 0) })
+                t('alerts.insufficient_cash', { amount: formatAmount(cashAccount?.balance || 0) })
             );
             return;
         }
 
         setLoading(true);
         try {
-            // Le dispatch addBudget va maintenant aussi diminuer les espèces
             await dispatch(addBudget({
                 name: budgetName,
-                amount: numAmount,
+                totalAlimente: numAmount,
                 color: budgetColor,
                 startDate: new Date(),
                 endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
@@ -120,11 +123,7 @@ const Budgets = () => {
 
             await refreshData();
             resetModal();
-            setBudgetName('');
-            setBudgetAmount('');
-            Alert.alert(
-                t('alerts.budget_created', { name: budgetName, amount: formatAmount(numAmount) })
-            );
+            Alert.alert(t('common.success'), t('alerts.budget_created', { name: budgetName, amount: formatAmount(numAmount) }));
         } catch (error: any) {
             Alert.alert(t('alerts.error'), error.message);
         } finally {
@@ -132,7 +131,6 @@ const Budgets = () => {
         }
     };
 
-    // CORRECTION PRINCIPALE ICI
     const handleAlimenterBudget = async () => {
         if (!selectedBudget) {
             Alert.alert(t('alerts.error'), 'Budget non sélectionné');
@@ -148,7 +146,7 @@ const Budgets = () => {
         if (!cashAccount || cashAccount.balance < numAmount) {
             Alert.alert(
                 t('alerts.error'),
-                t('alerts.insufficient_cash', {amount: formatAmount(cashAccount?.balance || 0)})
+                t('alerts.insufficient_cash', { amount: formatAmount(cashAccount?.balance || 0) })
             );
             return;
         }
@@ -156,21 +154,12 @@ const Budgets = () => {
         setLoading(true);
         try {
             // 1. Diminuer les espèces
-            const newCashBalance = cashAccount.balance - numAmount;
             await dispatch(updateAccountBalance({
                 accountId: cashAccount.id,
-                newBalance: newCashBalance
+                newBalance: cashAccount.balance - numAmount
             })).unwrap();
 
-            // 2. Modifier le budget (spent devient plus négatif pour augmenter le budget)
-            const currentSpent = selectedBudget.spent;
-            const newSpent = currentSpent - numAmount;
-            await dispatch(updateBudgetSpent({
-                budgetId: selectedBudget.id,
-                amount: newSpent - currentSpent
-            })).unwrap();
-
-            // 3. Ajouter la transaction
+            // 2. Ajouter une transaction d'alimentation
             await dispatch(addTransaction({
                 type: 'income',
                 operation: 'Alimentation',
@@ -178,17 +167,14 @@ const Budgets = () => {
                 destination: 'budget',
                 budgetId: selectedBudget.id,
                 amount: numAmount,
-                description: description || t('transaction.top_up', {field: 'budget', name: selectedBudget.name}),
+                description: description || `Alimentation du budget ${selectedBudget.name}`,
                 date: new Date(),
             })).unwrap();
 
-            // 4. Recharger les données
             await refreshData();
-
             resetModal();
-            Alert.alert(t('common.success'), t('alerts.budget_topped_up', {amount: formatAmount(numAmount), name: selectedBudget.name}));
+            Alert.alert(t('common.success'), t('alerts.budget_topped_up', { amount: formatAmount(numAmount), name: selectedBudget.name }));
         } catch (error: any) {
-            console.error(' Erreur:', error);
             Alert.alert(t('alerts.error'), error.message);
         } finally {
             setLoading(false);
@@ -200,26 +186,22 @@ const Budgets = () => {
             Alert.alert(t('alerts.error'), 'Budget non sélectionné');
             return;
         }
+
         const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
             Alert.alert(t('alerts.error'), t('alerts.invalid_amount'));
             return;
         }
-        const { solde } = getBudgetTotals(selectedBudget);
+
+        const { solde } = getBudgetTotals(selectedBudget.id);
         if (solde < numAmount) {
-            Alert.alert(t('alerts.error'), t('alerts.insufficient_budget', {amount: formatAmount(solde)}))
+            Alert.alert(t('alerts.error'), t('alerts.insufficient_budget', { amount: formatAmount(solde) }));
             return;
         }
 
         setLoading(true);
         try {
-            const currentSpent = selectedBudget.spent;
-            const newSpent = currentSpent + numAmount;
-            await dispatch(updateBudgetSpent({
-                budgetId: selectedBudget.id,
-                amount: newSpent - currentSpent
-            })).unwrap();
-
+            // Ajouter une transaction de dépense
             await dispatch(addTransaction({
                 type: 'expense',
                 operation: 'Dépense',
@@ -227,13 +209,63 @@ const Budgets = () => {
                 destination: '',
                 budgetId: selectedBudget.id,
                 amount: numAmount,
-                description: description.trim() || t('budgets.spent_from', {name: selectedBudget.name}),
+                description: description.trim() || `Dépense depuis ${selectedBudget.name}`,
                 date: new Date(),
             })).unwrap();
 
             await refreshData();
             resetModal();
-            Alert.alert(t('common.success'), `${formatAmount(numAmount)}` + t('budgets.spent_from', {name: selectedBudget.name}));
+            Alert.alert(t('common.success'), `${formatAmount(numAmount)} dépensé depuis "${selectedBudget.name}"`);
+        } catch (error: any) {
+            Alert.alert(t('alerts.error'), error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleTransferToSavings = async () => {
+        if (!selectedBudget) {
+            Alert.alert(t('alerts.error'), 'Budget non sélectionné');
+            return;
+        }
+
+        const numAmount = parseFloat(amount);
+        if (isNaN(numAmount) || numAmount <= 0) {
+            Alert.alert(t('alerts.error'), t('alerts.invalid_amount'));
+            return;
+        }
+
+        const { solde } = getBudgetTotals(selectedBudget.id);
+        if (solde < numAmount) {
+            Alert.alert(t('alerts.error'), t('alerts.insufficient_budget', { amount: formatAmount(solde) }));
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // 1. Ajouter une transaction de DÉPENSE (pas Transfert) pour réduire le budget
+            await dispatch(addTransaction({
+                type: 'expense',
+                operation: 'Dépense',  // ← Changer en 'Dépense'
+                source: 'budget',
+                destination: 'savings',
+                budgetId: selectedBudget.id,
+                amount: numAmount,
+                description: description || `Transfert vers épargne depuis ${selectedBudget.name}`,
+                date: new Date(),
+            })).unwrap();
+
+            // 2. Augmenter l'épargne
+            if (savingsAccount) {
+                await dispatch(updateAccountBalance({
+                    accountId: savingsAccount.id,
+                    newBalance: savingsAccount.balance + numAmount
+                })).unwrap();
+            }
+
+            await refreshData();
+            resetModal();
+            Alert.alert(t('common.success'), t('alerts.budget_transferred', { amount: formatAmount(numAmount) }));
         } catch (error: any) {
             Alert.alert(t('alerts.error'), error.message);
         } finally {
@@ -243,20 +275,17 @@ const Budgets = () => {
 
     const handleEditBudget = async () => {
         if (!selectedBudget) {
-            console.log('ato')
             Alert.alert(t('alerts.error'), 'Budget non sélectionné');
             return;
         }
 
         if (!budgetName.trim()) {
-            console.log('et')
             Alert.alert(t('alerts.error'), t('alerts.budget_name_required'));
             return;
         }
 
         setLoading(true);
         try {
-            console.log('xx');
             await dispatch(updateBudget({
                 budgetId: selectedBudget.id,
                 name: budgetName,
@@ -273,13 +302,46 @@ const Budgets = () => {
         }
     };
 
+    const handleDeleteBudget = (budget: any) => {
+        const { solde } = getBudgetTotals(budget.id);
+        const message = solde > 0
+            ? t('alerts.delete_budget_confirm', { name: budget.name }) + '\n\n' + t('alerts.delete_budget_with_refund', { amount: formatAmount(solde) })
+            : t('alerts.delete_budget_confirm', { name: budget.name }) + '\n\n' + t('alerts.delete_budget_no_refund');
+
+        Alert.alert(
+            t('alerts.delete_budget'),
+            message,
+            [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                    text: t('common.delete'),
+                    style: 'destructive',
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            await dispatch(deleteBudget(budget.id)).unwrap();
+                            await refreshData();
+                            const successMessage = solde > 0
+                                ? `${t('alerts.delete_budget_success', { name: budget.name })} ${t('alerts.delete_budget_refund', { amount: formatAmount(solde) })}`
+                                : t('alerts.delete_budget_success', { name: budget.name });
+                            Alert.alert(t('common.success'), successMessage);
+                        } catch (error: any) {
+                            Alert.alert(t('alerts.error'), error.message);
+                        } finally {
+                            setLoading(false);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     const renderEditModal = () => (
         <Modal animationType="slide" transparent={true} visible={modalVisible && modalType === 'edit' && selectedBudget !== null} onRequestClose={resetModal}>
             <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                 <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background }}>
                     <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>{t('common.edit')}</Text>
                     <Text className="text-sm mb-2" style={{ color: colors.textSecondary }}>Budget actuel: {selectedBudget?.name}</Text>
-
                     <TextInput
                         placeholder="Nouveau nom"
                         placeholderTextColor={colors.textSecondary}
@@ -288,7 +350,6 @@ const Budgets = () => {
                         className="p-3 rounded-xl mb-3"
                         style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }}
                     />
-
                     <Text className="text-sm mb-2" style={{ color: colors.text }}>Nouvelle couleur:</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
                         <View className="flex-row space-x-2">
@@ -304,18 +365,9 @@ const Budgets = () => {
                             ))}
                         </View>
                     </ScrollView>
-
-                    <TouchableOpacity
-                        onPress={handleEditBudget}
-                        disabled={loading}
-                        className="p-3 rounded-xl mb-2"
-                        style={{ backgroundColor: colors.warning, opacity: loading ? 0.7 : 1 }}
-                    >
-                        <Text className="text-white text-center font-semibold">
-                            {loading ? t('common.loading') : t('common.save')}
-                        </Text>
+                    <TouchableOpacity onPress={handleEditBudget} disabled={loading} className="p-3 rounded-xl mb-2" style={{ backgroundColor: colors.warning, opacity: loading ? 0.7 : 1 }}>
+                        <Text className="text-white text-center font-semibold">{loading ? t('common.loading') : t('common.save')}</Text>
                     </TouchableOpacity>
-
                     <TouchableOpacity onPress={resetModal} className="p-3 rounded-xl">
                         <Text className="text-center" style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
@@ -324,104 +376,10 @@ const Budgets = () => {
         </Modal>
     );
 
-    const handleTransferToSavings = async () => {
-        if (!selectedBudget) {
-            Alert.alert(t('alerts.error'), 'Budget non sélectionné');
-            return;
-        }
-        const numAmount = parseFloat(amount);
-        if (isNaN(numAmount) || numAmount <= 0) {
-            Alert.alert(t('alerts.error'), t('alerts.invalid_amount'));
-            return;
-        }
-        const { solde } = getBudgetTotals(selectedBudget);
-        if (solde < numAmount) {
-            Alert.alert(t('alerts.error'), t('alerts.insufficient_budget', {amount: formatAmount(solde)}));
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const currentSpent = selectedBudget.spent;
-            const newSpent = currentSpent + numAmount;
-            await dispatch(updateBudgetSpent({
-                budgetId: selectedBudget.id,
-                amount: newSpent - currentSpent
-            })).unwrap();
-
-            if (savingsAccount) {
-                await dispatch(updateAccountBalance({
-                    accountId: savingsAccount.id,
-                    newBalance: savingsAccount.balance + numAmount
-                })).unwrap();
-            }
-
-            await dispatch(addTransaction({
-                type: 'transfer',
-                operation: 'Transfert',
-                source: 'budget',
-                destination: 'savings',
-                budgetId: selectedBudget.id,
-                amount: numAmount,
-                description: description || t('budgets.transfer_to_savings_from', {name: selectedBudget.name}),
-                date: new Date(),
-            })).unwrap();
-
-            await refreshData();
-            resetModal();
-            Alert.alert(t('common.success'), t('alerts.budget_transferred', {amount: formatAmount(numAmount)}));
-        } catch (error: any) {
-            Alert.alert(t('alerts.error'), error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDeleteBudget = (budget: any) => {
-        // Calculer le solde restant pour l'afficher dans la confirmation
-        let soldeRestant = budget.amount - budget.spent;
-        if (budget.spent < 0) {
-            soldeRestant = budget.amount + Math.abs(budget.spent);
-        }
-
-        const message = soldeRestant > 0
-            ? t('alerts.delete_budget_confirm', {name: budget.name}) + '\n\n' + t('alerts.delete_budget_with_refund', {amount: formatAmount(soldeRestant)})
-            : t('alerts.delete_budget_confirm', {name: budget.name}) + '\n\n' + t('alerts.delete_budget_no_refund');
-
-        Alert.alert(
-            t('alerts.delete_budget'),
-            message,
-            [
-                { text: t('common.cancel'), style: 'cancel' },
-                {
-                    text:  t('common.delete'),
-                    style: 'destructive',
-                    onPress: async () => {
-                        setLoading(true);
-                        try {
-                            // Appeler deleteBudget avec remboursement automatique
-                            await dispatch(deleteBudget(budget.id)).unwrap();
-                            await refreshData();
-                            const successMessage = soldeRestant > 0
-                                ? `${t('alerts.delete_budget_success', { name: budget.name })} ${t('alerts.delete_budget_refund', { amount: formatAmount(soldeRestant) })}`
-                                : t('alerts.delete_budget_success', { name: budget.name });
-
-                            Alert.alert(t('common.success'), successMessage);
-                        } catch (error: any) {
-                            Alert.alert(t('alerts.error'), error.message);
-                        } finally {
-                            setLoading(false);
-                        }
-                    },
-                },
-            ]
-        );
-    };
-
     const HistoryModal = () => {
         if (!selectedBudget) return null;
         const budgetTransactions = getBudgetTransactions(selectedBudget.id);
-        const { totalReel, depenses, solde } = getBudgetTotals(selectedBudget);
+        const { totalAlimente, totalDepense, solde } = getBudgetTotals(selectedBudget.id);
 
         return (
             <Modal
@@ -433,7 +391,7 @@ const Budgets = () => {
                 <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background, maxHeight: '80%' }}>
                         <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-xl font-bold" style={{ color: colors.text }}>{t('budgets.history')} - {selectedBudget.name} </Text>
+                            <Text className="text-xl font-bold" style={{ color: colors.text }}>{t('budgets.history')} - {selectedBudget.name}</Text>
                             <TouchableOpacity onPress={resetModal}>
                                 <MaterialIcons name="close" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
@@ -441,15 +399,15 @@ const Budgets = () => {
 
                         <View className="flex-row justify-between mb-4 p-3 rounded-xl" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('budgets.total')}</Text>
-                                <Text className="text-lg font-bold" style={{ color: colors.primary }}>{formatAmount(totalReel)}</Text>
+                                <Text className="text-xs" style={{ color: colors.textSecondary }}>Total alimenté</Text>
+                                <Text className="text-lg font-bold" style={{ color: colors.primary }}>{formatAmount(totalAlimente)}</Text>
                             </View>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('budgets.spent')}</Text>
-                                <Text className="text-lg font-bold" style={{ color: colors.error }}>{formatAmount(depenses)}</Text>
+                                <Text className="text-xs" style={{ color: colors.textSecondary }}>Total dépensé</Text>
+                                <Text className="text-lg font-bold" style={{ color: colors.error }}>{formatAmount(totalDepense)}</Text>
                             </View>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('budgets.current_balance')}</Text>
+                                <Text className="text-xs" style={{ color: colors.textSecondary }}>Solde</Text>
                                 <Text className="text-lg font-bold" style={{ color: colors.success }}>{formatAmount(solde)}</Text>
                             </View>
                         </View>
@@ -475,10 +433,7 @@ const Budgets = () => {
                                                     <MaterialIcons name={icon.name as any} size={20} color={icon.color} />
                                                 </View>
                                                 <View className="flex-1">
-                                                    <Text className="font-semibold" style={{ color: colors.text }}>
-                                                        {item.operation === 'Alimentation' ? t('dashboard.top_up') :
-                                                        item.operation === 'Transfert' ? t('dashboard.transfer') : t('dashboard.spent')}
-                                                    </Text>
+                                                    <Text className="font-semibold" style={{ color: colors.text }}>{item.operation}</Text>
                                                     <Text className="text-xs" style={{ color: colors.textSecondary }} numberOfLines={1}>{item.description}</Text>
                                                     <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>{formatDate(item.date)}</Text>
                                                 </View>
@@ -554,7 +509,7 @@ const Budgets = () => {
                 <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background }}>
                     <Text className="text-xl font-bold mb-2" style={{ color: colors.text }}>{t('budgets.spend')}</Text>
                     <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>Budget: {selectedBudget?.name}</Text>
-                    <Text className="text-sm mb-4" style={{ color: colors.warning }}>{t('budgets.current_balance_info')}: {formatAmount(getBudgetTotals(selectedBudget).solde)}</Text>
+                    <Text className="text-sm mb-4" style={{ color: colors.warning }}>Solde actuel: {formatAmount(getBudgetTotals(selectedBudget.id).solde)}</Text>
                     <TextInput placeholder={t('budgets.expense_amount')} placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={amount} onChangeText={setAmount} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border, fontSize: 24, textAlign: 'center' }} />
                     <TextInput placeholder={t('budgets.description_optional')} placeholderTextColor={colors.textSecondary} value={description} onChangeText={setDescription} className="p-3 rounded-xl mb-4" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
                     <TouchableOpacity onPress={handleDepense} disabled={loading} className="p-3 rounded-xl mb-2" style={{ backgroundColor: colors.error, opacity: loading ? 0.7 : 1 }}>
@@ -574,7 +529,7 @@ const Budgets = () => {
                 <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background }}>
                     <Text className="text-xl font-bold mb-2" style={{ color: colors.text }}>{t('budgets.transfer_to_savings')}</Text>
                     <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>Budget: {selectedBudget?.name}</Text>
-                    <Text className="text-sm mb-4" style={{ color: colors.success }}>{t('budgets.current_balance_info')}: {formatAmount(getBudgetTotals(selectedBudget).solde)}</Text>
+                    <Text className="text-sm mb-4" style={{ color: colors.success }}>Solde actuel: {formatAmount(getBudgetTotals(selectedBudget.id).solde)}</Text>
                     <TextInput placeholder={t('budgets.amount_to_transfer')} placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={amount} onChangeText={setAmount} className="p-3 rounded-xl mb-3" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border, fontSize: 24, textAlign: 'center' }} />
                     <TextInput placeholder={t('budgets.description_optional')} placeholderTextColor={colors.textSecondary} value={description} onChangeText={setDescription} className="p-3 rounded-xl mb-4" style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }} />
                     <TouchableOpacity onPress={handleTransferToSavings} disabled={loading} className="p-3 rounded-xl mb-2" style={{ backgroundColor: colors.success, opacity: loading ? 0.7 : 1 }}>
@@ -635,22 +590,21 @@ const Budgets = () => {
                     <View className="mx-4 mb-4 p-3 rounded-xl" style={{ backgroundColor: `${colors.warning}15`, borderWidth: 1, borderColor: `${colors.warning}30` }}>
                         <View className="flex-row items-center">
                             <MaterialIcons name="info" size={20} color={colors.warning} />
-                            <Text className="text-sm ml-2 flex-1" style={{ color: colors.textSecondary }}>
-                                {t('budgets.add_cash_hint')}
-                            </Text>
+                            <Text className="text-sm ml-2 flex-1" style={{ color: colors.textSecondary }}>{t('budgets.add_cash_hint')}</Text>
                         </View>
                     </View>
                 )}
 
-                {budgets.filter(b => !b.isClosed).length === 0 ? (
+                {budgets.length === 0 ? (
                     <View className="mx-4 p-8 rounded-xl items-center" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
                         <MaterialIcons name="account-balance-wallet" size={50} color={colors.textSecondary} />
                         <Text className="text-center mt-3" style={{ color: colors.textSecondary }}>{t('budgets.no_budget')}</Text>
                         <Text className="text-center text-sm" style={{ color: colors.textSecondary }}>{t('budgets.add_budget_hint')}</Text>
                     </View>
                 ) : (
-                    budgets.filter(b => !b.isClosed).map((budget) => {
-                        const { totalReel, depenses, solde, pourcentage } = getBudgetTotals(budget);
+                    budgets.map((budget) => {
+                        const { totalAlimente, totalDepense, solde, pourcentage } = getBudgetTotals(budget.id);
+                        const budgetObj = budget;
                         return (
                             <View key={budget.id} className="mx-4 p-4 mb-3 rounded-xl" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
                                 <View className="flex-row justify-between items-center mb-3">
@@ -659,16 +613,7 @@ const Budgets = () => {
                                         <Text className="font-semibold text-base" style={{ color: colors.text }}>{budget.name}</Text>
                                     </View>
                                     <View className="flex-row items-center">
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                setSelectedBudget(budget);
-                                                setBudgetName(budget.name);
-                                                setBudgetColor(budget.color);
-                                                setModalType('edit');
-                                                setModalVisible(true);
-                                            }}
-                                            className="mr-3 p-1"
-                                        >
+                                        <TouchableOpacity onPress={() => { setSelectedBudget(budget); setBudgetName(budget.name); setBudgetColor(budget.color); setModalType('edit'); setModalVisible(true); }} className="mr-3 p-1">
                                             <MaterialIcons name="edit" size={22} color={colors.warning} />
                                         </TouchableOpacity>
                                         <TouchableOpacity onPress={() => { setSelectedBudget(budget); setModalType('history'); setModalVisible(true); }} className="mr-3 p-1">
@@ -686,8 +631,8 @@ const Budgets = () => {
                                 </View>
 
                                 <View className="flex-row justify-between mb-2">
-                                    <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('budgets.total')}: {formatAmount(totalReel)}</Text>
-                                    <Text className="text-xs" style={{ color: colors.error }}>{t('budgets.spent')}: {formatAmount(depenses)}</Text>
+                                    <Text className="text-xs" style={{ color: colors.textSecondary }}>Alimenté: {formatAmount(totalAlimente)}</Text>
+                                    <Text className="text-xs" style={{ color: colors.error }}>Dépensé: {formatAmount(totalDepense)}</Text>
                                 </View>
 
                                 <View className="mt-1">
@@ -701,15 +646,15 @@ const Budgets = () => {
                                 </View>
 
                                 <View className="flex-row flex-wrap gap-2 mt-4">
-                                    <TouchableOpacity onPress={() => { setSelectedBudget(budget); setModalType('alimenter'); setAmount(''); setDescription(''); setModalVisible(true); }} className="flex-1 py-2 rounded-xl flex-row items-center justify-center" style={{ backgroundColor: colors.primary }}>
+                                    <TouchableOpacity onPress={() => { setSelectedBudget(budgetObj); setModalType('alimenter'); setAmount(''); setDescription(''); setModalVisible(true); }} className="flex-1 py-2 rounded-xl flex-row items-center justify-center" style={{ backgroundColor: colors.primary }}>
                                         <MaterialIcons name="add" size={18} color="white" />
                                         <Text className="text-white font-semibold ml-1 text-sm">{t('budgets.top_up')}</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => { setSelectedBudget(budget); setModalType('depense'); setAmount(''); setDescription(''); setModalVisible(true); }} className="flex-1 py-2 rounded-xl flex-row items-center justify-center" style={{ backgroundColor: colors.error }}>
+                                    <TouchableOpacity onPress={() => { setSelectedBudget(budgetObj); setModalType('depense'); setAmount(''); setDescription(''); setModalVisible(true); }} className="flex-1 py-2 rounded-xl flex-row items-center justify-center" style={{ backgroundColor: colors.error }}>
                                         <MaterialIcons name="shopping-cart" size={18} color="white" />
                                         <Text className="text-white font-semibold ml-1 text-sm">{t('budgets.spend')}</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => { setSelectedBudget(budget); setModalType('transferToSavings'); setAmount(''); setDescription(''); setModalVisible(true); }} className="flex-1 py-2 rounded-xl flex-row items-center justify-center" style={{ backgroundColor: colors.success }}>
+                                    <TouchableOpacity onPress={() => { setSelectedBudget(budgetObj); setModalType('transferToSavings'); setAmount(''); setDescription(''); setModalVisible(true); }} className="flex-1 py-2 rounded-xl flex-row items-center justify-center" style={{ backgroundColor: colors.success }}>
                                         <MaterialIcons name="savings" size={18} color="white" />
                                         <Text className="text-white font-semibold ml-1 text-sm">{t('budgets.to_savings')}</Text>
                                     </TouchableOpacity>
@@ -722,10 +667,11 @@ const Budgets = () => {
             </ScrollView>
 
             {renderAddModal()}
-            {renderAlimenterModal()}
-            {renderDepenseModal()}
-            {renderTransferModal()}
-            {renderEditModal()}
+            {modalVisible && modalType === 'alimenter' && selectedBudget !== null && renderAlimenterModal()}
+            {modalVisible && modalType === 'depense' && selectedBudget !== null && renderDepenseModal()}
+            {modalVisible && modalType === 'transferToSavings' && selectedBudget !== null && renderTransferModal()}
+            {modalVisible && modalType === 'edit' && selectedBudget !== null && renderEditModal()}
+            {modalVisible && modalType === 'history' && selectedBudget !== null && <HistoryModal />}
             <HistoryModal />
         </SafeAreaView>
     );

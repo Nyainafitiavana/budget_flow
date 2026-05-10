@@ -1,3 +1,4 @@
+// types/index.ts
 export type AccountType = 'bank' | 'cash' | 'savings';
 
 export interface Account {
@@ -13,9 +14,8 @@ export interface Account {
 export interface Budget {
     id: string;
     name: string;
-    amount: number;
-    spent: number;
-    remaining: number;
+    totalAlimente: number;  // Montant total alimenté (création + top-ups)
+    totalDepense: number;   // Montant total dépensé
     color: string;
     startDate: Date;
     endDate: Date;

@@ -9,7 +9,8 @@
     "error": "Erreur",
     "success": "Succès",
     "yes": "Oui",
-    "no": "Non"
+    "no": "Non",
+    "close": "Fermer"
   },
   "tabs": {
     "home": "Accueil",
@@ -63,7 +64,6 @@
     "remaining": "Restant",
     "top_up": "Alimenter",
     "spend": "Dépenser",
-    "transfer": "Transférer",
     "to_savings": "→ Épargne",
     "add_cash_hint": "Ajoutez des espèces depuis l'onglet Comptes pour pouvoir créer un budget",
     "new_budget": "Nouveau budget",
@@ -75,7 +75,6 @@
     "available_cash_info": "Espèces disponibles",
     "amount_to_add": "Montant à ajouter",
     "description_optional": "Description (optionnelle)",
-    "spend_from_budget": "Dépenser",
     "current_balance_info": "Solde actuel",
     "expense_amount": "Montant de la dépense",
     "transfer_to_savings": "Transférer vers l'épargne",
@@ -109,7 +108,23 @@
     "amount": "Montant",
     "top_up_from": "Alimentation depuis extérieur",
     "added_to_bank": "{{amount}} ajouté au compte bancaire",
-    "withdrawal_savings_to_cash": "Retrait épargne vers espèces"
+    "withdrawal_savings_to_cash": "Retrait épargne vers espèces",
+    "transferred_to_cash": "transféré vers espèces",
+    "history": "Historique",
+    "total_income": "Total entrées",
+    "total_expense": "Total sorties",
+    "net_flow": "Solde net",
+    "no_transactions": "Aucune transaction pour ce compte",
+    "transfer": "Transfert",
+    "from": "De",
+    "to": "Vers",
+    "current_balance": "Solde actuel",
+    "expense": "Dépense",
+    "bank_expense": "Dépense bancaire",
+    "bank_expense_description": "Achat en ligne / Paiement carte",
+    "bank_expense_success": "{{amount}} dépensé depuis le compte bancaire",
+    "confirm_expense": "Confirmer la dépense",
+    "description_optional": "Description (optionnelle)"
   },
   "settings": {
     "appearance": "Apparence",
@@ -164,7 +179,17 @@
     "transferred_from_savings": "{{amount}} transféré depuis l'épargne",
     "account_not_found": "Aucun compte bancaire trouvé",
     "accounts_not_found": "Comptes non trouvés",
-    "success_transfer_to_cash": "{{amount}} transféré vers espèces"
+    "success_transfer_to_cash": "{{amount}} transféré vers espèces",
+    "delete_transaction": "Supprimer la transaction",
+    "delete_alimentation_confirm": "Supprimer cette alimentation de {{amount}} ?\n\nLe montant sera reversé dans votre compte Espèces.",
+    "delete_expense_confirm": "Supprimer cette dépense de {{amount}} ?\n\nLe montant sera reversé dans votre budget.",
+    "delete_transfer_confirm": "Supprimer ce transfert de {{amount}} ?\n\nLe montant sera reversé dans votre budget et retiré de votre épargne.",
+    "delete_transaction_confirm": "Supprimer cette transaction ?",
+    "delete_alimentation_success": "Alimentation de {{amount}} supprimée. Le montant a été reversé dans les espèces.",
+    "delete_expense_success": "Dépense de {{amount}} supprimée. Le montant a été reversé dans le budget.",
+    "delete_transfer_success": "Transfert de {{amount}} supprimé. Le montant a été reversé dans le budget et retiré de l'épargne.",
+    "delete_transaction_success": "Transaction supprimée avec succès.",
+    "delete_expense_confirm_bank": "Supprimer cette dépense bancaire de {{amount}} ?\n\nLe montant sera reversé dans votre compte bancaire."
   },
   "common_errors": {
     "insufficient_bank_balance": "Solde bancaire insuffisant",

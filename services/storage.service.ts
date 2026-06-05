@@ -71,6 +71,12 @@ class BudgetStorageService {
         await storageService.setItem(this.KEYS.BUDGETS, filtered);
     }
 
+    async deleteTransaction(transactionId: string): Promise<void> {
+        const transactions = await this.getTransactions();
+        const filtered = transactions.filter(t => t.id !== transactionId);
+        await storageService.setItem(this.KEYS.TRANSACTIONS, filtered);
+    }
+
     // ============ TRANSACTIONS ============
     async getTransactions(): Promise<Transaction[]> {
         const transactions = await storageService.getItem<Transaction[]>(this.KEYS.TRANSACTIONS);

@@ -239,6 +239,68 @@ export const updateBudget = createAsyncThunk(
     }
 );
 
+// Thunk pour supprimer une transaction
+export const deleteTransaction = createAsyncThunk(
+    'data/deleteTransaction',
+    async ({ transactionId, budgetId }: { transactionId: string; budgetId: string }) => {
+        console.log('🗑️ deleteTransaction appelé:', { transactionId, budgetId });
+
+        // 1. Récupérer la transaction à supprimer
+        const transactions = await budgetStorageService.getTransactions();
+        const transactionToDelete = transactions.find(t => t.id === transactionId);
+
+        if (!transactionToDelete) {
+            throw new Error('Transaction non trouvée');
+        }
+
+        console.log('📝 Transaction à supprimer:', transactionToDelete);
+
+        // 2. Récupérer les comptes actuels
+        const accounts = await budgetStorageService.getAccounts();
+        const cashAccount = accounts.find(a => a.type === 'cash');
+
+        // 3. Appliquer les règles métier selon le type d'opération
+        if (transactionToDelete.operation === 'Alimentation') {
+            // Règle: Suppression d'une alimentation → le montant retourne dans les espèces
+            if (cashAccount) {
+                const newCashBalance = cashAccount.balance + transactionToDelete.amount;
+                await budgetStorageService.updateAccountBalance(cashAccount.id, newCashBalance);
+                console.log(`💰 Alimentation supprimée: +${transactionToDelete.amount}€ reversé aux espèces`);
+            }
+        }
+        else if (transactionToDelete.operation === 'Dépense') {
+            // Règle: Suppression d'une dépense → le montant retourne dans le budget
+            // (Pas d'action sur les comptes, le solde du budget sera recalculé via les transactions)
+            console.log(`💸 Dépense supprimée: +${transactionToDelete.amount}€ retourné au budget`);
+        }
+        else if (transactionToDelete.operation === 'Transfert' && transactionToDelete.destination === 'savings') {
+            // Règle: Suppression d'un transfert vers épargne
+            // 1. Le montant retourne au budget
+            // 2. Il faut aussi retirer du compte épargne
+            const savingsAccount = accounts.find(a => a.type === 'savings');
+            if (savingsAccount) {
+                const newSavingsBalance = Math.max(0, savingsAccount.balance - transactionToDelete.amount);
+                await budgetStorageService.updateAccountBalance(savingsAccount.id, newSavingsBalance);
+                console.log(`🏦 Transfert supprimé: -${transactionToDelete.amount}€ retiré de l'épargne`);
+            }
+        }
+
+        // 4. Supprimer la transaction
+        await budgetStorageService.deleteTransaction(transactionId);
+
+        // 5. Recharger toutes les données
+        const [newAccounts, newBudgets, newTransactions] = await Promise.all([
+            budgetStorageService.getAccounts(),
+            budgetStorageService.getBudgets(),
+            budgetStorageService.getTransactions(),
+        ]);
+
+        console.log('✅ Transaction supprimée avec succès');
+
+        return { accounts: newAccounts, budgets: newBudgets, transactions: newTransactions };
+    }
+);
+
 // Thunk pour ajouter un compte
 export const addAccount = createAsyncThunk(
     'data/addAccount',
@@ -355,6 +417,19 @@ const dataSlice = createSlice({
             .addCase(updateBudget.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.error.message || 'Erreur lors de la modification';
+            })
+            .addCase(deleteTransaction.pending, (state) => {
+                state.isLoading = true;
+            })
+            .addCase(deleteTransaction.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.accounts = action.payload.accounts;
+                state.budgets = action.payload.budgets;
+                state.transactions = action.payload.transactions;
+            })
+            .addCase(deleteTransaction.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.error.message || 'Erreur lors de la suppression de la transaction';
             })
             .addCase(addAccount.pending, (state) => {
                 state.isLoading = true;

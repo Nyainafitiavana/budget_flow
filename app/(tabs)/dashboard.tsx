@@ -119,7 +119,7 @@ const Dashboard = () => {
                             <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>{t('dashboard.add_budget_hint')}</Text>
                         </View>
                     ) : (
-                        budgets.slice(0, 3).map((budget) => {
+                        budgets.map((budget) => {
                             const { totalAlimente, totalDepense, solde } = getBudgetStats(budget.id);
                             const percentage = getBudgetPercentage(budget.id);
                             return (
@@ -137,9 +137,9 @@ const Dashboard = () => {
                         })
                     )}
 
-                    {budgets.length > 3 && (
-                        <Text className="text-xs text-center mt-2" style={{ color: colors.textSecondary }}>+{budgets.length - 3} {t('dashboard.other_budgets')}</Text>
-                    )}
+                    {/*{budgets.length > 3 && (*/}
+                    {/*    <Text className="text-xs text-center mt-2" style={{ color: colors.textSecondary }}>+{budgets.length - 3} {t('dashboard.other_budgets')}</Text>*/}
+                    {/*)}*/}
 
                     <Text className="text-lg font-semibold mt-6 mb-4" style={{ color: colors.text }}>{t('dashboard.recent_transactions')}</Text>
 

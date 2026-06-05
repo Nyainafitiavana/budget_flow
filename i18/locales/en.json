@@ -9,7 +9,8 @@
     "error": "Error",
     "success": "Success",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "close": "Close"
   },
   "tabs": {
     "home": "Home",
@@ -59,7 +60,6 @@
     "current_balance": "Current balance",
     "total": "Total",
     "spent": "Spent",
-    "transfer": "Transfer",
     "usage": "Usage",
     "remaining": "Remaining",
     "top_up": "Top up",
@@ -75,7 +75,6 @@
     "available_cash_info": "Available cash",
     "amount_to_add": "Amount to add",
     "description_optional": "Description (optional)",
-    "spend_from_budget": "Spend",
     "current_balance_info": "Current balance",
     "expense_amount": "Expense amount",
     "transfer_to_savings": "Transfer to savings",
@@ -109,7 +108,23 @@
     "amount": "Amount",
     "top_up_from": "Top up from exterior",
     "added_to_bank": "{{amount}} added to bank account",
-    "withdrawal_savings_to_cash": "Withdrawal savings to cash"
+    "withdrawal_savings_to_cash": "Withdrawal savings to cash",
+    "transferred_to_cash": "transferred to cash",
+    "history": "History",
+    "total_income": "Total income",
+    "total_expense": "Total expense",
+    "net_flow": "Net flow",
+    "no_transactions": "No transactions for this account",
+    "transfer": "Transfer",
+    "from": "From",
+    "to": "To",
+    "current_balance": "Current balance",
+    "expense": "Expense",
+    "bank_expense": "Bank expense",
+    "bank_expense_description": "Online purchase / Card payment",
+    "bank_expense_success": "{{amount}} spent from bank account",
+    "confirm_expense": "Confirm expense",
+    "description_optional": "Description (optional)"
   },
   "settings": {
     "appearance": "Appearance",
@@ -128,7 +143,7 @@
     "delete_budgets_desc": "Delete only budgets",
     "delete_accounts": "Delete accounts",
     "delete_accounts_desc": "Delete only accounts",
-    "reset_all": "🗑️ Reset all data",
+    "reset_all": "Reset all data",
     "reset_all_desc": "Delete everything",
     "version": "Version",
     "language": "Language",
@@ -164,7 +179,17 @@
     "transferred_from_savings": "{{amount}} transferred from savings",
     "account_not_found": "Bank account not found",
     "accounts_not_found": "Accounts not found",
-    "success_transfer_to_cash": "{{amount}} transferred to cash"
+    "success_transfer_to_cash": "{{amount}} transferred to cash",
+    "delete_transaction": "Delete transaction",
+    "delete_alimentation_confirm": "Delete this {{amount}} top up?\n\nThe amount will be refunded to your Cash account.",
+    "delete_expense_confirm": "Delete this {{amount}} expense?\n\nThe amount will be refunded to your budget.",
+    "delete_transfer_confirm": "Delete this {{amount}} transfer?\n\nThe amount will be refunded to your budget and removed from your savings.",
+    "delete_transaction_confirm": "Delete this transaction?",
+    "delete_alimentation_success": "Top up of {{amount}} deleted. The amount has been refunded to cash.",
+    "delete_expense_success": "Expense of {{amount}} deleted. The amount has been refunded to the budget.",
+    "delete_transfer_success": "Transfer of {{amount}} deleted. The amount has been refunded to the budget and removed from savings.",
+    "delete_transaction_success": "Transaction successfully deleted.",
+    "delete_expense_confirm_bank": "Delete this bank expense of {{amount}}?\n\nThe amount will be refunded to your bank account."
   },
   "common_errors": {
     "insufficient_bank_balance": "Insufficient bank balance",

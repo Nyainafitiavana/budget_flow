@@ -10,7 +10,7 @@ import {
     addTransaction,
     addBudget,
     deleteBudget,
-    updateBudget
+    updateBudget, deleteTransaction
 } from '@/store/slices/data.slice';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -381,6 +381,63 @@ const Budgets = () => {
         const budgetTransactions = getBudgetTransactions(selectedBudget.id);
         const { totalAlimente, totalDepense, solde } = getBudgetTotals(selectedBudget.id);
 
+        const handleDeleteTransaction = (transaction: any) => {
+            const isAlimentation = transaction.operation === 'Alimentation';
+            const isDepense = transaction.operation === 'Dépense';
+            const isTransfert = transaction.operation === 'Transfert';
+
+            let message = '';
+            if (isAlimentation) {
+                message = t('alerts.delete_alimentation_confirm', { amount: formatAmount(transaction.amount) });
+            } else if (isDepense) {
+                message = t('alerts.delete_expense_confirm', { amount: formatAmount(transaction.amount) });
+            } else if (isTransfert) {
+                message = t('alerts.delete_transfer_confirm', { amount: formatAmount(transaction.amount) });
+            } else {
+                message = t('alerts.delete_transaction_confirm');
+            }
+
+            Alert.alert(
+                t('alerts.delete_transaction'),
+                message,
+                [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    {
+                        text: t('common.delete'),
+                        style: 'destructive',
+                        onPress: async () => {
+                            setLoading(true);
+                            try {
+                                await dispatch(deleteTransaction({
+                                    transactionId: transaction.id,
+                                    budgetId: selectedBudget.id
+                                })).unwrap();
+
+                                await refreshData();
+
+                                let successMessage = '';
+                                if (isAlimentation) {
+                                    successMessage = t('alerts.delete_alimentation_success', { amount: formatAmount(transaction.amount) });
+                                } else if (isDepense) {
+                                    successMessage = t('alerts.delete_expense_success', { amount: formatAmount(transaction.amount) });
+                                } else if (isTransfert) {
+                                    successMessage = t('alerts.delete_transfer_success', { amount: formatAmount(transaction.amount) });
+                                } else {
+                                    successMessage = t('alerts.delete_transaction_success');
+                                }
+
+                                Alert.alert(t('common.success'), successMessage);
+                            } catch (error: any) {
+                                Alert.alert(t('alerts.error'), error.message);
+                            } finally {
+                                setLoading(false);
+                            }
+                        },
+                    },
+                ]
+            );
+        };
+
         return (
             <Modal
                 animationType="slide"
@@ -438,9 +495,17 @@ const Budgets = () => {
                                                     <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>{formatDate(item.date)}</Text>
                                                 </View>
                                             </View>
-                                            <Text className="font-bold" style={{ color: isEntree ? colors.success : isSortie ? colors.error : colors.warning }}>
-                                                {isEntree ? '+' : '-'} {formatAmount(item.amount)}
-                                            </Text>
+                                            <View className="flex-row items-center">
+                                                <Text className="font-bold mr-3" style={{ color: isEntree ? colors.success : isSortie ? colors.error : colors.warning }}>
+                                                    {isEntree ? '+' : '-'} {formatAmount(item.amount)}
+                                                </Text>
+                                                <TouchableOpacity
+                                                    onPress={() => handleDeleteTransaction(item)}
+                                                    className="p-2"
+                                                >
+                                                    <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+                                                </TouchableOpacity>
+                                            </View>
                                         </View>
                                     );
                                 }}

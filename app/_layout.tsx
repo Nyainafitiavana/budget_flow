@@ -5,11 +5,11 @@ import { useTheme } from '@/hooks/use-theme';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
-import { I18nextProvider } from 'react-i18next';
-import i18n, { getStoredLanguage, changeLanguage } from '@/i18';
+import { useState, useEffect, useCallback } from "react";
+import { storageService } from '@/hooks/use-storage';
+import { LicenseScreen } from '@/components/LicenseScreen';
 import "../global.css";
-import {ActivityIndicator, View} from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
 export const unstable_settings = {
     anchor: "(tabs)",
@@ -17,18 +17,35 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
     const { isDark, isLoading } = useTheme();
-    const [isI18nReady, setIsI18nReady] = useState(false);
+    const [isLicensed, setIsLicensed] = useState<boolean | null>(null);
+    const [isChecking, setIsChecking] = useState(true);
+    const [refreshKey, setRefreshKey] = useState(0);
 
-    useEffect(() => {
-        const initLanguage = async () => {
-            const savedLang = await getStoredLanguage();
-            await changeLanguage(savedLang);
-            setIsI18nReady(true);
-        };
-        initLanguage();
+    const checkLicenseStatus = useCallback(async () => {
+        try {
+            const licensed = await storageService.getItem<boolean>('isLicensed');
+            console.log('🔍 License status from storage:', licensed);
+
+            setIsLicensed(licensed === true);
+        } catch (error) {
+            console.error('Error checking license:', error);
+            setIsLicensed(false);
+        } finally {
+            setIsChecking(false);
+        }
     }, []);
 
-    if (isLoading || !isI18nReady) {
+    useEffect(() => {
+        checkLicenseStatus();
+    }, [checkLicenseStatus, refreshKey]);
+
+    const handleActivated = useCallback(() => {
+        console.log('🎉 Activation confirmed, refreshing app state...');
+        setIsChecking(true);
+        setRefreshKey(prev => prev + 1);
+    }, []);
+
+    if (isLoading || isChecking) {
         return (
             <View className="flex-1 items-center justify-center">
                 <ActivityIndicator size="large" color="#2563EB" />
@@ -36,6 +53,12 @@ function RootLayoutNav() {
         );
     }
 
+    if (!isLicensed) {
+        console.log('📱 Rendering LicenseScreen');
+        return <LicenseScreen onActivated={handleActivated} />;
+    }
+
+    console.log('🏠 Rendering Main App');
     return (
         <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
             <Stack>
@@ -49,9 +72,7 @@ function RootLayoutNav() {
 export default function RootLayout() {
     return (
         <Provider store={store}>
-            <I18nextProvider i18n={i18n}>
-                <RootLayoutNav />
-            </I18nextProvider>
+            <RootLayoutNav />
         </Provider>
     );
 }

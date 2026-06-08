@@ -37,13 +37,10 @@ const Index = () => {
                 >
                     <Image
                         source={LogoImage}
-                        className="w-20 h-20"
+                        className="w-20 h-20 rounded-full"
                         resizeMode="contain"
                     />
 
-                    <Text className="text-3xl font-bold text-center mb-2" style={{ color: colors.text }}>
-                        {t('home.title')}
-                    </Text>
                     <Text className="text-base text-center px-6" style={{ color: colors.textSecondary }}>
                         {t('home.subtitle')}
                     </Text>

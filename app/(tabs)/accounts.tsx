@@ -290,7 +290,8 @@ const Accounts = () => {
                                                         {formatDate(item.date)}
                                                     </Text>
                                                     {item.source && item.destination && item.source !== 'external' && (
-                                                        <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+                                                        <Text className="text-xs mt-0.5"
+                                                              style={{color: colors.textSecondary}}>
                                                             {t('accounts.from')}: {item.source === 'bank' ? t('accounts.bank_account') :
                                                             item.source === 'cash' ? t('accounts.cash') :
                                                                 item.source === 'savings' ? t('accounts.savings') : item.source}

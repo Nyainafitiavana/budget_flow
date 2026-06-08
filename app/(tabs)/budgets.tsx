@@ -456,15 +456,15 @@ const Budgets = () => {
 
                         <View className="flex-row justify-between mb-4 p-3 rounded-xl" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>Total alimenté</Text>
+                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('accounts.total_income')}</Text>
                                 <Text className="text-lg font-bold" style={{ color: colors.primary }}>{formatAmount(totalAlimente)}</Text>
                             </View>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>Total dépensé</Text>
+                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('accounts.total_expense')}</Text>
                                 <Text className="text-lg font-bold" style={{ color: colors.error }}>{formatAmount(totalDepense)}</Text>
                             </View>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>Solde</Text>
+                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('accounts.net_flow')}</Text>
                                 <Text className="text-lg font-bold" style={{ color: colors.success }}>{formatAmount(solde)}</Text>
                             </View>
                         </View>
@@ -490,7 +490,12 @@ const Budgets = () => {
                                                     <MaterialIcons name={icon.name as any} size={20} color={icon.color} />
                                                 </View>
                                                 <View className="flex-1">
-                                                    <Text className="font-semibold" style={{ color: colors.text }}>{item.operation}</Text>
+                                                    <Text className="font-semibold" style={{ color: colors.text }}>
+                                                        {item.operation === 'Alimentation' ? t('accounts.top_up') :
+                                                            item.operation === 'Dépense' ? t('accounts.expense') :
+                                                                item.operation === 'Transfert' ? t('accounts.transfer') :
+                                                                    item.operation}
+                                                    </Text>
                                                     <Text className="text-xs" style={{ color: colors.textSecondary }} numberOfLines={1}>{item.description}</Text>
                                                     <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>{formatDate(item.date)}</Text>
                                                 </View>

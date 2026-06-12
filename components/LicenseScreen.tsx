@@ -74,12 +74,6 @@ export const LicenseScreen: React.FC<LicenseScreenProps> = ({ onActivated }) => 
         const expected = generateExpectedLicense(cleanCode);
         const cleanExpected = expected.replace(/[^A-Z0-9]/g, '');
 
-        console.log('🔍 Verification:');
-        console.log('   Clean device:', cleanCode);
-        console.log('   Clean license:', cleanLicense);
-        console.log('   Clean expected:', cleanExpected);
-        console.log('   Match:', cleanLicense === cleanExpected);
-
         return cleanLicense === cleanExpected;
     }, [generateExpectedLicense]);
 
@@ -103,15 +97,14 @@ export const LicenseScreen: React.FC<LicenseScreenProps> = ({ onActivated }) => 
             const isValid = verifyLicense(deviceCode, licenseCode);
 
             if (isValid) {
-                console.log('✅ License valid, saving activation...');
+                console.log('License valid, saving activation...');
                 await storageService.setItem('isLicensed', true);
                 await storageService.setItem('licensedAt', new Date().toISOString());
-                console.log('✅ Activation saved');
-                Alert.alert('✅ Success', 'Your license has been activated!');
+                console.log('Activation saved');
+                Alert.alert('Success', 'Your license has been activated!');
                 onActivated();
             } else {
-                const expected = generateExpectedLicense(deviceCode);
-                Alert.alert('❌ Invalid license', `Expected: ${expected}\n\nYour: ${licenseCode}`);
+                Alert.alert('❌ Invalid license');
             }
         } catch (error) {
             console.error('Verification error:', error);

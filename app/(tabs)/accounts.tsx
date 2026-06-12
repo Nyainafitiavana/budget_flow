@@ -1,24 +1,41 @@
 // app/(tabs)/accounts.tsx - Version avec dépense directe depuis la banque
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Alert, FlatList } from 'react-native';
-import { useTheme } from '@/hooks/use-theme';
-import { useBudgetData } from '@/hooks/use-budget-data';
-import { useCurrency } from '@/hooks/use-currency';
-import { useAppDispatch } from '@/store/hooks';
-import { updateAccountBalance, addTransaction, deleteTransaction } from '@/store/slices/data.slice';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, {useState, useCallback} from 'react';
+import {
+    View,
+    Text,
+    ScrollView,
+    TouchableOpacity,
+    TextInput,
+    Modal,
+    ActivityIndicator,
+    Alert,
+    FlatList
+} from 'react-native';
+import {useTheme} from '@/hooks/use-theme';
+import {useBudgetData} from '@/hooks/use-budget-data';
+import {useCurrency} from '@/hooks/use-currency';
+import {useAppDispatch} from '@/store/hooks';
+import {updateAccountBalance, addTransaction} from '@/store/slices/data.slice';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Account, Transaction } from '@/types';
-import { useTranslation } from "react-i18next";
-import { budgetStorageService } from '@/services/storage.service';
+import {Account, Transaction} from '@/types';
+import {useTranslation} from "react-i18next";
+import {budgetStorageService} from '@/services/storage.service';
 
-type ModalType = 'ALIMENT-BANK' | 'BANK-TO-ESPECE' | 'ESPECE-TO-EPARGNE' | 'EPARGNE-TO-ESPECE' | 'BANK-EXPENSE' | 'HISTORY';
+type ModalType =
+    'ALIMENT-BANK' |
+    'BANK-TO-ESPECE' |
+    'CASH-ALIMENT' |
+    'ESPECE-TO-EPARGNE' |
+    'EPARGNE-TO-ESPECE' |
+    'BANK-EXPENSE' |
+    'HISTORY';
 
 const Accounts = () => {
-    const { colors } = useTheme();
-    const { t } = useTranslation();
-    const { accounts, transactions, refreshData, isLoading } = useBudgetData();
-    const { formatAmount } = useCurrency();
+    const {colors} = useTheme();
+    const {t} = useTranslation();
+    const {accounts, transactions, refreshData, isLoading} = useBudgetData();
+    const {formatAmount} = useCurrency();
     const dispatch = useAppDispatch();
 
     const [modalVisible, setModalVisible] = useState(false);
@@ -62,14 +79,26 @@ const Accounts = () => {
     };
 
     const getTransactionIcon = (transaction: Transaction) => {
-        if (transaction.source === 'external') return { name: 'add-circle', color: '#10B981' };
-        if (transaction.operation === 'Dépense') return { name: 'shopping-cart', color: '#EF4444' };
-        if (transaction.destination === 'savings' && transaction.source === 'cash') return { name: 'savings', color: '#F59E0B' };
-        if (transaction.source === 'savings' && transaction.destination === 'cash') return { name: 'arrow-downward', color: '#EF4444' };
-        if (transaction.source === 'bank' && transaction.destination === 'cash') return { name: 'swap-horiz', color: '#3B82F6' };
-        if (transaction.source === 'cash' && transaction.destination === 'bank') return { name: 'swap-horiz', color: '#3B82F6' };
-        if (transaction.operation === 'Alimentation') return { name: 'add-circle', color: '#10B981' };
-        return { name: 'receipt', color: '#6B7280' };
+        if (transaction.source === 'external') return {name: 'add-circle', color: '#10B981'};
+        if (transaction.operation === 'Dépense') return {name: 'shopping-cart', color: '#EF4444'};
+        if (transaction.destination === 'savings' && transaction.source === 'cash') return {
+            name: 'savings',
+            color: '#F59E0B'
+        };
+        if (transaction.source === 'savings' && transaction.destination === 'cash') return {
+            name: 'arrow-downward',
+            color: '#EF4444'
+        };
+        if (transaction.source === 'bank' && transaction.destination === 'cash') return {
+            name: 'swap-horiz',
+            color: '#3B82F6'
+        };
+        if (transaction.source === 'cash' && transaction.destination === 'bank') return {
+            name: 'swap-horiz',
+            color: '#3B82F6'
+        };
+        if (transaction.operation === 'Alimentation') return {name: 'add-circle', color: '#10B981'};
+        return {name: 'receipt', color: '#6B7280'};
     };
 
     const getTransactionAmountColor = (transaction: Transaction, accountType: string) => {
@@ -108,15 +137,15 @@ const Accounts = () => {
         return isIncome ? '+' : '-';
     };
 
-    const handleDeleteTransaction = async (transaction: Transaction, accountType: string) => {
+    const handleDeleteTransaction = async (transaction: Transaction) => {
         let message = '';
 
         if (transaction.operation === 'Alimentation') {
-            message = t('alerts.delete_alimentation_confirm', { amount: formatAmount(transaction.amount) });
+            message = t('alerts.delete_alimentation_confirm', {amount: formatAmount(transaction.amount)});
         } else if (transaction.operation === 'Dépense') {
-            message = t('alerts.delete_expense_confirm_bank', { amount: formatAmount(transaction.amount) });
+            message = t('alerts.delete_expense_confirm_bank', {amount: formatAmount(transaction.amount)});
         } else if (transaction.operation === 'Transfert') {
-            message = t('alerts.delete_transfer_confirm', { amount: formatAmount(transaction.amount) });
+            message = t('alerts.delete_transfer_confirm', {amount: formatAmount(transaction.amount)});
         } else {
             message = t('alerts.delete_transaction_confirm');
         }
@@ -125,7 +154,7 @@ const Accounts = () => {
             t('alerts.delete_transaction'),
             message,
             [
-                { text: t('common.cancel'), style: 'cancel' },
+                {text: t('common.cancel'), style: 'cancel'},
                 {
                     text: t('common.delete'),
                     style: 'destructive',
@@ -139,31 +168,27 @@ const Accounts = () => {
                                 if (bank) {
                                     await budgetStorageService.updateAccountBalance(bank.id, bank.balance - transaction.amount);
                                 }
-                            }
-                            else if (transaction.operation === 'Dépense' && transaction.source === 'bank') {
+                            } else if (transaction.operation === 'Dépense' && transaction.source === 'bank') {
                                 // Suppression d'une dépense bancaire → le montant retourne à la banque
                                 const bank = currentAccounts.find(a => a.type === 'bank');
                                 if (bank) {
                                     await budgetStorageService.updateAccountBalance(bank.id, bank.balance + transaction.amount);
                                 }
-                            }
-                            else if (transaction.source === 'bank' && transaction.destination === 'cash') {
+                            } else if (transaction.source === 'bank' && transaction.destination === 'cash') {
                                 const bank = currentAccounts.find(a => a.type === 'bank');
                                 const cash = currentAccounts.find(a => a.type === 'cash');
                                 if (bank && cash) {
                                     await budgetStorageService.updateAccountBalance(bank.id, bank.balance + transaction.amount);
                                     await budgetStorageService.updateAccountBalance(cash.id, cash.balance - transaction.amount);
                                 }
-                            }
-                            else if (transaction.source === 'cash' && transaction.destination === 'savings') {
+                            } else if (transaction.source === 'cash' && transaction.destination === 'savings') {
                                 const cash = currentAccounts.find(a => a.type === 'cash');
                                 const savings = currentAccounts.find(a => a.type === 'savings');
                                 if (cash && savings) {
                                     await budgetStorageService.updateAccountBalance(cash.id, cash.balance + transaction.amount);
                                     await budgetStorageService.updateAccountBalance(savings.id, savings.balance - transaction.amount);
                                 }
-                            }
-                            else if (transaction.source === 'savings' && transaction.destination === 'cash') {
+                            } else if (transaction.source === 'savings' && transaction.destination === 'cash') {
                                 const savings = currentAccounts.find(a => a.type === 'savings');
                                 const cash = currentAccounts.find(a => a.type === 'cash');
                                 if (savings && cash) {
@@ -225,29 +250,36 @@ const Accounts = () => {
                 visible={modalVisible && modalType === 'HISTORY'}
                 onRequestClose={resetModal}
             >
-                <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background, maxHeight: '80%' }}>
+                <View className="flex-1 justify-end" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                    <View className="rounded-t-3xl p-6" style={{backgroundColor: colors.background, maxHeight: '80%'}}>
                         <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-xl font-bold" style={{ color: colors.text }}>
+                            <Text className="text-xl font-bold" style={{color: colors.text}}>
                                 {t('accounts.history')} - {accountName}
                             </Text>
                             <TouchableOpacity onPress={resetModal}>
-                                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
+                                <MaterialIcons name="close" size={24} color={colors.textSecondary}/>
                             </TouchableOpacity>
                         </View>
 
-                        <View className="flex-row justify-between mb-4 p-3 rounded-xl" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+                        <View className="flex-row justify-between mb-4 p-3 rounded-xl"
+                              style={{backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border}}>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('accounts.total_income')}</Text>
-                                <Text className="text-lg font-bold" style={{ color: colors.success }}>{formatAmount(totalIncome)}</Text>
+                                <Text className="text-xs"
+                                      style={{color: colors.textSecondary}}>{t('accounts.total_income')}</Text>
+                                <Text className="text-lg font-bold"
+                                      style={{color: colors.success}}>{formatAmount(totalIncome)}</Text>
                             </View>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('accounts.total_expense')}</Text>
-                                <Text className="text-lg font-bold" style={{ color: colors.error }}>{formatAmount(totalExpense)}</Text>
+                                <Text className="text-xs"
+                                      style={{color: colors.textSecondary}}>{t('accounts.total_expense')}</Text>
+                                <Text className="text-lg font-bold"
+                                      style={{color: colors.error}}>{formatAmount(totalExpense)}</Text>
                             </View>
                             <View>
-                                <Text className="text-xs" style={{ color: colors.textSecondary }}>{t('accounts.net_flow')}</Text>
-                                <Text className="text-lg font-bold" style={{ color: totalIncome - totalExpense >= 0 ? colors.success : colors.error }}>
+                                <Text className="text-xs"
+                                      style={{color: colors.textSecondary}}>{t('accounts.net_flow')}</Text>
+                                <Text className="text-lg font-bold"
+                                      style={{color: totalIncome - totalExpense >= 0 ? colors.success : colors.error}}>
                                     {formatAmount(totalIncome - totalExpense)}
                                 </Text>
                             </View>
@@ -255,8 +287,8 @@ const Accounts = () => {
 
                         {accountTransactions.length === 0 ? (
                             <View className="items-center py-8">
-                                <MaterialIcons name="history" size={50} color={colors.textSecondary} />
-                                <Text className="text-center mt-3" style={{ color: colors.textSecondary }}>
+                                <MaterialIcons name="history" size={50} color={colors.textSecondary}/>
+                                <Text className="text-center mt-3" style={{color: colors.textSecondary}}>
                                     {t('accounts.no_transactions')}
                                 </Text>
                             </View>
@@ -265,28 +297,38 @@ const Accounts = () => {
                                 data={accountTransactions}
                                 keyExtractor={(item) => item.id}
                                 showsVerticalScrollIndicator={false}
-                                renderItem={({ item }) => {
+                                renderItem={({item}) => {
                                     const icon = getTransactionIcon(item);
                                     const amountColor = getTransactionAmountColor(item, selectedAccount.type);
                                     const prefix = getTransactionAmountPrefix(item, selectedAccount.type);
 
                                     return (
-                                        <View className="flex-row items-center justify-between p-3 mb-2 rounded-xl" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+                                        <View className="flex-row items-center justify-between p-3 mb-2 rounded-xl"
+                                              style={{
+                                                  backgroundColor: colors.surface,
+                                                  borderWidth: 1,
+                                                  borderColor: colors.border
+                                              }}>
                                             <View className="flex-row items-center flex-1">
-                                                <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: `${icon.color}15` }}>
-                                                    <MaterialIcons name={icon.name as any} size={20} color={icon.color} />
+                                                <View
+                                                    className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                                                    style={{backgroundColor: `${icon.color}15`}}>
+                                                    <MaterialIcons name={icon.name as any} size={20}
+                                                                   color={icon.color}/>
                                                 </View>
                                                 <View className="flex-1">
-                                                    <Text className="font-semibold" style={{ color: colors.text }}>
+                                                    <Text className="font-semibold" style={{color: colors.text}}>
                                                         {item.operation === 'Alimentation' ? t('accounts.top_up') :
                                                             item.operation === 'Dépense' ? t('accounts.expense') :
                                                                 item.operation === 'Transfert' ? t('accounts.transfer') :
                                                                     item.operation}
                                                     </Text>
-                                                    <Text className="text-xs" style={{ color: colors.textSecondary }} numberOfLines={1}>
+                                                    <Text className="text-xs" style={{color: colors.textSecondary}}
+                                                          numberOfLines={1}>
                                                         {item.description}
                                                     </Text>
-                                                    <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+                                                    <Text className="text-xs mt-0.5"
+                                                          style={{color: colors.textSecondary}}>
                                                         {formatDate(item.date)}
                                                     </Text>
                                                     {item.source && item.destination && item.source !== 'external' && (
@@ -304,14 +346,15 @@ const Accounts = () => {
                                                 </View>
                                             </View>
                                             <View className="flex-row items-center">
-                                                <Text className="font-bold mr-3" style={{ color: amountColor }}>
+                                                <Text className="font-bold mr-3" style={{color: amountColor}}>
                                                     {prefix} {formatAmount(item.amount)}
                                                 </Text>
                                                 <TouchableOpacity
-                                                    onPress={() => handleDeleteTransaction(item, selectedAccount.type)}
+                                                    onPress={() => handleDeleteTransaction(item)}
                                                     className="p-2"
                                                 >
-                                                    <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+                                                    <MaterialIcons name="delete-outline" size={20}
+                                                                   color={colors.error}/>
                                                 </TouchableOpacity>
                                             </View>
                                         </View>
@@ -320,7 +363,8 @@ const Accounts = () => {
                             />
                         )}
 
-                        <TouchableOpacity onPress={resetModal} className="mt-4 p-3 rounded-xl" style={{ backgroundColor: colors.primary }}>
+                        <TouchableOpacity onPress={resetModal} className="mt-4 p-3 rounded-xl"
+                                          style={{backgroundColor: colors.primary}}>
                             <Text className="text-white text-center font-semibold">{t('common.close')}</Text>
                         </TouchableOpacity>
                     </View>
@@ -360,7 +404,7 @@ const Accounts = () => {
 
             await refreshData();
             resetModal();
-            Alert.alert(t('common.success'), t('accounts.added_to_bank', { amount: formatAmount(numAmount) }));
+            Alert.alert(t('common.success'), t('accounts.added_to_bank', {amount: formatAmount(numAmount)}));
         } catch (error: any) {
             Alert.alert(t('common.error'), error.message);
         } finally {
@@ -444,7 +488,7 @@ const Accounts = () => {
 
             await refreshData();
             resetModal();
-            Alert.alert(t('common.success'), t('accounts.bank_expense_success', { amount: formatAmount(numAmount) }));
+            Alert.alert(t('common.success'), t('accounts.bank_expense_success', {amount: formatAmount(numAmount)}));
         } catch (error: any) {
             Alert.alert(t('common.error'), error.message);
         } finally {
@@ -452,7 +496,46 @@ const Accounts = () => {
         }
     }, [amount, description, bankAccount, dispatch, formatAmount, refreshData, resetModal, t]);
 
-    // 4. Espèces → Épargne
+    // 4. Alimenter le compte espèces (extérieur → espèces)
+    const handleCashAliment = useCallback(async () => {
+        const numAmount = parseFloat(amount);
+        if (isNaN(numAmount) || numAmount <= 0) {
+            Alert.alert(t('common.error'), t('alerts.invalid_amount'));
+            return;
+        }
+        if (!cashAccount) {
+            Alert.alert(t('common.error'), t('alerts.account_not_found'));
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await dispatch(updateAccountBalance({
+                accountId: cashAccount.id,
+                newBalance: cashAccount.balance + numAmount
+            })).unwrap();
+
+            await dispatch(addTransaction({
+                type: 'income',
+                operation: 'Alimentation',
+                source: 'external',
+                destination: 'cash',
+                amount: numAmount,
+                description: description.trim() || t('accounts.cash_top_up_description'),
+                date: new Date(),
+            })).unwrap();
+
+            await refreshData();
+            resetModal();
+            Alert.alert(t('common.success'), t('accounts.cash_top_up_success', { amount: formatAmount(numAmount) }));
+        } catch (error: any) {
+            Alert.alert(t('common.error'), error.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [amount, description, cashAccount, dispatch, formatAmount, refreshData, resetModal, t]);
+
+    // 5. Espèces → Épargne
     const handleCashToEpargne = useCallback(async () => {
         const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
@@ -464,7 +547,7 @@ const Accounts = () => {
             return;
         }
         if (cashAccount.balance < numAmount) {
-            Alert.alert(t('common.error'), t('alerts.insufficient_cash', { amount: formatAmount(cashAccount.balance) }));
+            Alert.alert(t('common.error'), t('alerts.insufficient_cash', {amount: formatAmount(cashAccount.balance)}));
             return;
         }
 
@@ -492,7 +575,7 @@ const Accounts = () => {
 
             await refreshData();
             resetModal();
-            Alert.alert(t('common.success'), t('alerts.budget_transferred', { amount: formatAmount(numAmount) }));
+            Alert.alert(t('common.success'), t('alerts.budget_transferred', {amount: formatAmount(numAmount)}));
         } catch (error: any) {
             Alert.alert(t('common.error'), error.message);
         } finally {
@@ -500,7 +583,7 @@ const Accounts = () => {
         }
     }, [amount, description, cashAccount, savingsAccount, dispatch, formatAmount, refreshData, resetModal, t]);
 
-    // 5. Épargne → Espèces
+    // 6. Épargne → Espèces
     const handleSavingsToCash = useCallback(async () => {
         const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
@@ -512,7 +595,7 @@ const Accounts = () => {
             return;
         }
         if (savingsAccount.balance < numAmount) {
-            Alert.alert(t('common.error'), t('alerts.insufficient_saving', { amount: formatAmount(savingsAccount.balance) }));
+            Alert.alert(t('common.error'), t('alerts.insufficient_saving', {amount: formatAmount(savingsAccount.balance)}));
             return;
         }
 
@@ -531,7 +614,7 @@ const Accounts = () => {
             });
             await refreshData();
             resetModal();
-            Alert.alert(t('common.success'), t('alerts.transferred_from_savings', { amount: formatAmount(numAmount) }));
+            Alert.alert(t('common.success'), t('alerts.transferred_from_savings', {amount: formatAmount(numAmount)}));
         } catch (error: any) {
             Alert.alert(t('common.error'), error.message);
         } finally {
@@ -541,8 +624,8 @@ const Accounts = () => {
 
     if (isLoading) {
         return (
-            <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
-                <ActivityIndicator size="large" color={colors.primary} />
+            <SafeAreaView className="flex-1 items-center justify-center" style={{backgroundColor: colors.background}}>
+                <ActivityIndicator size="large" color={colors.primary}/>
             </SafeAreaView>
         );
     }
@@ -558,17 +641,19 @@ const Accounts = () => {
                              amountColor,
                              buttons
                          }: any) => (
-        <View className="mx-4 mt-4 p-5 rounded-2xl" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+        <View className="mx-4 mt-4 p-5 rounded-2xl"
+              style={{backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border}}>
             {/* En-tête avec titre et bouton historique */}
             <View className="flex-row justify-between items-center mb-4">
                 <View className="flex-row items-center flex-1">
-                    <View className="w-12 h-12 rounded-full items-center justify-center mr-3" style={{ backgroundColor: iconBgColor }}>
-                        <MaterialIcons name={icon} size={24} color={iconColor} />
+                    <View className="w-12 h-12 rounded-full items-center justify-center mr-3"
+                          style={{backgroundColor: iconBgColor}}>
+                        <MaterialIcons name={icon} size={24} color={iconColor}/>
                     </View>
                     <View className="flex-1">
-                        <Text className="text-lg font-semibold" style={{ color: colors.text }}>{title}</Text>
+                        <Text className="text-lg font-semibold" style={{color: colors.text}}>{title}</Text>
                         {subtitle && (
-                            <Text className="text-sm" style={{ color: colors.textSecondary }}>{subtitle}</Text>
+                            <Text className="text-sm" style={{color: colors.textSecondary}}>{subtitle}</Text>
                         )}
                     </View>
                 </View>
@@ -581,16 +666,17 @@ const Accounts = () => {
                         setModalVisible(true);
                     }}
                     className="p-2 rounded-full"
-                    style={{ backgroundColor: `${iconColor}15` }}
+                    style={{backgroundColor: `${iconColor}15`}}
                 >
-                    <MaterialIcons name="history" size={22} color={iconColor} />
+                    <MaterialIcons name="history" size={22} color={iconColor}/>
                 </TouchableOpacity>
             </View>
 
             {/* Montant */}
             <View className="mb-4 pt-2 pb-2">
-                <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>{t('accounts.current_balance')}</Text>
-                <Text className="text-3xl font-bold" style={{ color: amountColor }}>
+                <Text className="text-sm mb-1"
+                      style={{color: colors.textSecondary}}>{t('accounts.current_balance')}</Text>
+                <Text className="text-3xl font-bold" style={{color: amountColor}}>
                     {formatAmount(account?.balance || 0)}
                 </Text>
             </View>
@@ -603,9 +689,9 @@ const Accounts = () => {
                         onPress={btn.onPress}
                         disabled={btn.disabled}
                         className="flex-1 py-3 rounded-xl flex-row items-center justify-center"
-                        style={{ backgroundColor: btn.color, opacity: btn.disabled ? 0.5 : 1 }}
+                        style={{backgroundColor: btn.color, opacity: btn.disabled ? 0.5 : 1}}
                     >
-                        <MaterialIcons name={btn.icon} size={18} color="white" />
+                        <MaterialIcons name={btn.icon} size={18} color="white"/>
                         <Text className="text-white font-semibold ml-1 text-sm">{btn.label}</Text>
                     </TouchableOpacity>
                 ))}
@@ -613,8 +699,8 @@ const Accounts = () => {
 
             {/* Message informatif pour le compte espèces */}
             {account?.type === 'cash' && (
-                <View className="mt-3 p-3 rounded-xl" style={{ backgroundColor: `${colors.primary}10` }}>
-                    <Text className="text-xs text-center" style={{ color: colors.textSecondary }}>
+                <View className="mt-3 p-3 rounded-xl" style={{backgroundColor: `${colors.primary}10`}}>
+                    <Text className="text-xs text-center" style={{color: colors.textSecondary}}>
                         💡 {t('accounts.cash_info')}
                     </Text>
                 </View>
@@ -623,7 +709,7 @@ const Accounts = () => {
     );
 
     return (
-        <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
+        <SafeAreaView className="flex-1" style={{backgroundColor: colors.background}}>
             <ScrollView showsVerticalScrollIndicator={false}>
                 {/* Compte Bancaire */}
                 <AccountCard
@@ -682,6 +768,17 @@ const Accounts = () => {
                     amountColor={colors.text}
                     buttons={[
                         {
+                            label: t('accounts.top_up'),
+                            icon: "add",
+                            color: colors.primary,
+                            onPress: () => {
+                                setModalType('CASH-ALIMENT');
+                                setAmount('');
+                                setDescription('');
+                                setModalVisible(true);
+                            }
+                        },
+                        {
                             label: t('accounts.cash_to_savings'),
                             icon: "savings",
                             color: colors.warning || '#F59E0B',
@@ -727,12 +824,13 @@ const Accounts = () => {
                 visible={modalVisible && modalType !== 'HISTORY'}
                 onRequestClose={resetModal}
             >
-                <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <View className="rounded-t-3xl p-6" style={{ backgroundColor: colors.background }}>
-                        <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>
+                <View className="flex-1 justify-end" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                    <View className="rounded-t-3xl p-6" style={{backgroundColor: colors.background}}>
+                        <Text className="text-xl font-bold mb-4" style={{color: colors.text}}>
                             {modalType === 'ALIMENT-BANK' && t('accounts.top_up_bank')}
                             {modalType === 'BANK-TO-ESPECE' && t('accounts.transfer_bank_to_cash')}
                             {modalType === 'BANK-EXPENSE' && t('accounts.bank_expense')}
+                            {modalType === 'CASH-ALIMENT' && t('accounts.top_up_cash')}
                             {modalType === 'ESPECE-TO-EPARGNE' && t('accounts.transfer_cash_to_savings')}
                             {modalType === 'EPARGNE-TO-ESPECE' && t('accounts.transfer_savings_to_cash')}
                         </Text>
@@ -744,7 +842,14 @@ const Accounts = () => {
                             value={amount}
                             onChangeText={setAmount}
                             className="p-3 rounded-xl mb-3"
-                            style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border, fontSize: 24, textAlign: 'center' }}
+                            style={{
+                                backgroundColor: colors.surface,
+                                color: colors.text,
+                                borderWidth: 1,
+                                borderColor: colors.border,
+                                fontSize: 24,
+                                textAlign: 'center'
+                            }}
                         />
 
                         <TextInput
@@ -753,7 +858,12 @@ const Accounts = () => {
                             value={description}
                             onChangeText={setDescription}
                             className="p-3 rounded-xl mb-4"
-                            style={{ backgroundColor: colors.surface, color: colors.text, borderWidth: 1, borderColor: colors.border }}
+                            style={{
+                                backgroundColor: colors.surface,
+                                color: colors.text,
+                                borderWidth: 1,
+                                borderColor: colors.border
+                            }}
                         />
 
                         {modalType === 'ALIMENT-BANK' && (
@@ -761,7 +871,7 @@ const Accounts = () => {
                                 onPress={handleAlimenterBanque}
                                 disabled={loading}
                                 className="p-3 rounded-xl mb-2"
-                                style={{ backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }}
+                                style={{backgroundColor: colors.primary, opacity: loading ? 0.7 : 1}}
                             >
                                 <Text className="text-white text-center font-semibold">
                                     {loading ? t('common.loading') : t('accounts.top_up_bank')}
@@ -774,7 +884,7 @@ const Accounts = () => {
                                 onPress={handleBankToCash}
                                 disabled={loading}
                                 className="p-3 rounded-xl mb-2"
-                                style={{ backgroundColor: colors.secondary, opacity: loading ? 0.7 : 1 }}
+                                style={{backgroundColor: colors.secondary, opacity: loading ? 0.7 : 1}}
                             >
                                 <Text className="text-white text-center font-semibold">
                                     {loading ? t('common.loading') : t('accounts.transfer_bank_to_cash')}
@@ -787,10 +897,23 @@ const Accounts = () => {
                                 onPress={handleBankExpense}
                                 disabled={loading}
                                 className="p-3 rounded-xl mb-2"
-                                style={{ backgroundColor: colors.error, opacity: loading ? 0.7 : 1 }}
+                                style={{backgroundColor: colors.error, opacity: loading ? 0.7 : 1}}
                             >
                                 <Text className="text-white text-center font-semibold">
                                     {loading ? t('common.loading') : t('accounts.confirm_expense')}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {modalType === 'CASH-ALIMENT' && (
+                            <TouchableOpacity
+                                onPress={handleCashAliment}
+                                disabled={loading}
+                                className="p-3 rounded-xl mb-2"
+                                style={{ backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }}
+                            >
+                                <Text className="text-white text-center font-semibold">
+                                    {loading ? t('common.loading') : t('accounts.top_up_cash')}
                                 </Text>
                             </TouchableOpacity>
                         )}
@@ -800,7 +923,7 @@ const Accounts = () => {
                                 onPress={handleCashToEpargne}
                                 disabled={loading}
                                 className="p-3 rounded-xl mb-2"
-                                style={{ backgroundColor: colors.warning, opacity: loading ? 0.7 : 1 }}
+                                style={{backgroundColor: colors.warning, opacity: loading ? 0.7 : 1}}
                             >
                                 <Text className="text-white text-center font-semibold">
                                     {loading ? t('common.loading') : t('accounts.transfer_cash_to_savings')}
@@ -813,7 +936,7 @@ const Accounts = () => {
                                 onPress={handleSavingsToCash}
                                 disabled={loading}
                                 className="p-3 rounded-xl mb-2"
-                                style={{ backgroundColor: colors.success, opacity: loading ? 0.7 : 1 }}
+                                style={{backgroundColor: colors.success, opacity: loading ? 0.7 : 1}}
                             >
                                 <Text className="text-white text-center font-semibold">
                                     {loading ? t('common.loading') : t('accounts.transfer_savings_to_cash')}
@@ -825,13 +948,14 @@ const Accounts = () => {
                             onPress={resetModal}
                             className="p-3 rounded-xl"
                         >
-                            <Text className="text-center" style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
+                            <Text className="text-center"
+                                  style={{color: colors.textSecondary}}>{t('common.cancel')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
 
-            <HistoryModal />
+            <HistoryModal/>
         </SafeAreaView>
     );
 };

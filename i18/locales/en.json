@@ -124,7 +124,10 @@
     "bank_expense_description": "Online purchase / Card payment",
     "bank_expense_success": "{{amount}} spent from bank account",
     "confirm_expense": "Confirm expense",
-    "description_optional": "Description (optional)"
+    "description_optional": "Description (optional)",
+    "top_up_cash": "Top up cash account",
+    "cash_top_up_description": "Cash account top up",
+    "cash_top_up_success": "{{amount}} added to cash account"
   },
   "settings": {
     "appearance": "Appearance",
@@ -177,7 +180,7 @@
     "budget_spent": "{{amount}} spent from \"{{name}}\"",
     "budget_transferred": "{{amount}} transferred to savings",
     "transferred_from_savings": "{{amount}} transferred from savings",
-    "account_not_found": "Bank account not found",
+    "account_not_found": "Account not found",
     "accounts_not_found": "Accounts not found",
     "success_transfer_to_cash": "{{amount}} transferred to cash",
     "delete_transaction": "Delete transaction",

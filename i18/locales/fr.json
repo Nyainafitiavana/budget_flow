@@ -124,7 +124,10 @@
     "bank_expense_description": "Achat en ligne / Paiement carte",
     "bank_expense_success": "{{amount}} dépensé depuis le compte bancaire",
     "confirm_expense": "Confirmer la dépense",
-    "description_optional": "Description (optionnelle)"
+    "description_optional": "Description (optionnelle)",
+    "top_up_cash": "Alimenter le compte espèces",
+    "cash_top_up_description": "Alimentation du compte espèces",
+    "cash_top_up_success": "{{amount}} ajouté au compte espèces"
   },
   "settings": {
     "appearance": "Apparence",
@@ -177,7 +180,7 @@
     "budget_spent": "{{amount}} dépensé depuis \"{{name}}\"",
     "budget_transferred": "{{amount}} transféré vers l'épargne",
     "transferred_from_savings": "{{amount}} transféré depuis l'épargne",
-    "account_not_found": "Aucun compte bancaire trouvé",
+    "account_not_found": "Compte non trouvé",
     "accounts_not_found": "Comptes non trouvés",
     "success_transfer_to_cash": "{{amount}} transféré vers espèces",
     "delete_transaction": "Supprimer la transaction",
